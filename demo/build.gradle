@@ -24,6 +24,7 @@ android {
 }
 
 dependencies {
+    compile project(':app')
     compile fileTree(include: ['*.jar'], dir: 'libs')
     androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
@@ -32,5 +33,6 @@ dependencies {
     compile 'com.android.support.constraint:constraint-layout:1.0.2'
     testCompile 'junit:junit:4.12'
     compile "org.jetbrains.kotlin:kotlin-stdlib-jre7:$kotlin_version"
-    compile project(':app')
+    compile 'com.github.hotchemi:permissionsdispatcher:2.3.2'
+    kapt 'com.github.hotchemi:permissionsdispatcher-processor:2.3.2'
 }

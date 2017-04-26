@@ -1,5 +1,6 @@
 package com.kanade.recorder
 
+import android.Manifest
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
@@ -17,7 +18,16 @@ import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import kotlinx.android.synthetic.main.activity_recorder.*
+import permissions.dispatcher.NeedsPermission
+import permissions.dispatcher.OnShowRationale
+import permissions.dispatcher.PermissionRequest
+import permissions.dispatcher.RuntimePermissions
+import android.support.v7.app.AlertDialog
+import android.widget.Toast
+import permissions.dispatcher.OnNeverAskAgain
+import permissions.dispatcher.OnPermissionDenied
 
+@RuntimePermissions
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View, VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
     private val TAG = "Camera"
 
@@ -49,7 +59,17 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         super.onCreate(savedInstanceState)
 //        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,  WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
-        filePath = intent.getStringExtra(ARG_FILEPATH)
+        RecorderPermissionsDispatcher.initViewWithCheck(this, savedInstanceState)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        super.onSaveInstanceState(outState)
+        outState?.putString(ARG_FILEPATH, filePath)
+    }
+
+    @NeedsPermission(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
+    fun initView(savedInstanceState: Bundle?) {
+        filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
         handler = Handler()
         presenter = RecorderPresenter()
         presenter.attach(this, filePath)
@@ -65,6 +85,32 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_progress.setOnTouchListener(progressOnTouched)
         recorder_vv.setOnPreparedListener(this)
         recorder_vv.setOnTouchListener(svOnTouched)
+    }
+
+    @OnShowRationale(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
+    fun showRationaleForRecorder(request: PermissionRequest) {
+        AlertDialog.Builder(this)
+                .setMessage(R.string.permission_recorder_rationale)
+                .setPositiveButton(R.string.button_allow, { _, _ -> request.proceed() })
+                .setNegativeButton(R.string.button_deny, { _, _ -> request.cancel(); finish() })
+                .show()
+    }
+
+    @OnPermissionDenied(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
+    fun showDeniedForRecorder() {
+        Toast.makeText(this, R.string.permission_recorder_denied, Toast.LENGTH_SHORT).show()
+        finish()
+    }
+
+    @OnNeverAskAgain(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
+    fun showNeverAskForRecorder() {
+        Toast.makeText(this, R.string.permission_recorder_denied, Toast.LENGTH_SHORT).show()
+        finish()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        RecorderPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults)
     }
 
     override fun onResume() {

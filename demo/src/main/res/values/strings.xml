@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Demo</string>
+    <string name="button_allow">确定</string>
+    <string name="button_deny">拒绝</string>
+    <string name="permission_request">请允许</string>
+    <string name="permission_denied">请允许</string>
 </resources>
