@@ -6,7 +6,6 @@ import android.util.Log
 import android.view.SurfaceHolder
 import java.util.*
 
-
 @Suppress("DEPRECATION")
 class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCallback {
     private val TAG = "CameraManager"

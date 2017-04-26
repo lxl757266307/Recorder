@@ -48,7 +48,7 @@ class RecorderPresenter : IRecorderContract.Presenter {
 
     override fun recording() {
         duration++
-        val sec = duration / 10
+        val sec = duration / 10.0
         view.updateProgress((sec / MAX_DURATION * 100).toInt())
         if (sec > MAX_DURATION) {
             recordComplete()
@@ -85,7 +85,6 @@ class RecorderPresenter : IRecorderContract.Presenter {
     }
 
     private fun initProfile(): CamcorderProfile {
-        // 设置profile
         val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH)
         val size = cameraManager.getVideoSize()
         // 这里是重点，分辨率和比特率
@@ -94,7 +93,6 @@ class RecorderPresenter : IRecorderContract.Presenter {
         // 比特率越高越清晰（前提是分辨率保持不变），分辨率越大视频尺寸越大。
         profile.videoFrameWidth = size.first
         profile.videoFrameHeight = size.second
-        // 这样设置 1080p的视频 大小在5M , 可根据自己需求调节
         profile.videoBitRate = size.first * size.second
         return profile
     }

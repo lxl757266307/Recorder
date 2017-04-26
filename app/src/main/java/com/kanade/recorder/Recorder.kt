@@ -11,24 +11,25 @@ import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
 import android.util.Log
+import android.view.MotionEvent
 import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
-import android.view.WindowManager
 import kotlinx.android.synthetic.main.activity_recorder.*
 
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View, VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
     private val TAG = "Camera"
 
+    private lateinit var filePath: String
     private lateinit var presenter: IRecorderContract.Presenter
     private lateinit var handler: Handler
     // 是否正在播放
     private var isPlay = false
 
     private val focusAni:AnimatorSet by lazy { initvideo_record_focusAni() }
-    private val showSendAni:AnimatorSet by lazy { initShowSendViewAni() }
-    private val hideSendAni:AnimatorSet by lazy { initHideShowViewAni() }
+    private val showCompleteAni:AnimatorSet by lazy { initShowSendViewAni() }
+    private val hideCompleteAni:AnimatorSet by lazy { initHideShowViewAni() }
     private val runnable: Runnable by lazy { initRunnable() }
 
     companion object {
@@ -48,7 +49,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         super.onCreate(savedInstanceState)
 //        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,  WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
-        val filePath = intent.getStringExtra(ARG_FILEPATH)
+        filePath = intent.getStringExtra(ARG_FILEPATH)
         handler = Handler()
         presenter = RecorderPresenter()
         presenter.attach(this, filePath)
@@ -60,10 +61,10 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_cancelbtn.setOnClickListener(this)
         recorder_certainbtn.setOnClickListener(this)
 
-        recorder_vv.setOnTouchListener(svOnTouched)
         recorder_progress.setListener(this)
         recorder_progress.setOnTouchListener(progressOnTouched)
         recorder_vv.setOnPreparedListener(this)
+        recorder_vv.setOnTouchListener(svOnTouched)
     }
 
     override fun onResume() {
@@ -86,7 +87,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     override fun startRecord() {
-        Log.d(TAG, "videoview width: ${recorder_vv.width}, height: ${recorder_vv.height}")
         recorder_progress.recording()
     }
 
@@ -95,9 +95,8 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     override fun recordComplete(p: Int) {
-        Log.d(TAG, "$p")
         recorder_progress.recordComplete()
-        showSendView()
+        showCompleteView()
     }
 
     private fun showvideo_record_focus(x: Float, y: Float) {
@@ -112,26 +111,32 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         presenter.handleFocusMetering(x, y)
     }
 
-    private fun showSendView() {
-        if (showSendAni.isRunning) {
-            showSendAni.cancel()
+    private fun showCompleteView() {
+        if (showCompleteAni.isRunning) {
+            showCompleteAni.cancel()
         }
-        showSendAni.start()
+        showCompleteAni.start()
     }
 
-    private fun hideSendView() {
-        if (hideSendAni.isRunning) {
-            hideSendAni.cancel()
+    private fun hideCompleteView() {
+        if (hideCompleteAni.isRunning) {
+            hideCompleteAni.cancel()
         }
-        hideSendAni.start()
+        hideCompleteAni.start()
     }
 
     override fun onClick(view: View) {
         when (view.id) {
             R.id.recorder_back -> finish()
             R.id.recorder_cancelbtn -> {
-                hideSendView()
+                hideCompleteView()
                 presenter.reconnect(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
+            }
+            R.id.recorder_certainbtn -> {
+                val result = Intent()
+                result.putExtra(RESULT_FILEPATH, filePath)
+                setResult(RESULT_OK, result)
+                finish()
             }
         }
     }
@@ -169,9 +174,11 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     private val svOnTouched = View.OnTouchListener { _, event ->
-        Log.d(TAG, "videoview touched x: ${event.x}, y: ${event.y}")
-        showvideo_record_focus(event.x, event.y)
-        false
+        if (event.action == MotionEvent.ACTION_DOWN) {
+            showvideo_record_focus(event.x, event.y)
+            return@OnTouchListener true
+        }
+        return@OnTouchListener false
     }
 
     private val progressOnTouched = View.OnTouchListener { v, event -> presenter.onTouch(v, event); true }
