@@ -15,8 +15,8 @@ import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
 import android.view.ViewTreeObserver.OnGlobalLayoutListener
+import android.view.WindowManager
 import kotlinx.android.synthetic.main.activity_recorder.*
-
 
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View, VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
     private val TAG = "Camera"
@@ -46,6 +46,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+//        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,  WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
         val filePath = intent.getStringExtra(ARG_FILEPATH)
         handler = Handler()

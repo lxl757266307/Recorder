@@ -22,6 +22,7 @@
             </intent-filter>
         </activity>
         <activity android:name="com.kanade.recorder.Recorder"
-            android:screenOrientation="portrait"/>
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
     </application>
 </manifest>

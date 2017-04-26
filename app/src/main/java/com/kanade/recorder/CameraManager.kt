@@ -96,7 +96,7 @@ class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCa
 
         params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
 
-        if (params.getMaxNumFocusAreas() > 0) {
+        if (params.maxNumFocusAreas > 0) {
             val focusAreas = ArrayList<Camera.Area>()
             focusAreas.add(Camera.Area(focusRect, 1000))
 
