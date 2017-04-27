@@ -17,7 +17,9 @@ interface IRecorderContract {
 
         fun updateProgress(p: Int)
 
-        fun recordComplete(p: Int)
+        fun recordComplete()
+
+        fun setResult(result: RecorderResult)
     }
 
     interface Presenter {
@@ -32,6 +34,8 @@ interface IRecorderContract {
         fun onTouch(v: android.view.View, event: MotionEvent)
 
         fun reconnect(holder: SurfaceHolder, width: Int, height: Int)
+
+        fun setResult()
 
         fun recording()
     }

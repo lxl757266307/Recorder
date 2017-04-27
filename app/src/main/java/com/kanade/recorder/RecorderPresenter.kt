@@ -55,6 +55,12 @@ class RecorderPresenter : IRecorderContract.Presenter {
         }
     }
 
+    override fun setResult() {
+        val result = RecorderResult(filePath, (duration / 10.0).toInt())
+        view.setResult(result)
+    }
+
+
     private fun startRecord() {
         duration = 0f
         isRecording = true
@@ -66,7 +72,7 @@ class RecorderPresenter : IRecorderContract.Presenter {
     private fun recordComplete() {
         if (isRecording) {
             stopRecord()
-            view.recordComplete(Math.ceil(duration / 10.0).toInt())
+            view.recordComplete()
             view.playVideo(filePath)
         }
     }

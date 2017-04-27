@@ -11,7 +11,6 @@ import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.View.GONE
@@ -51,8 +50,8 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
                         .putExtra(ARG_FILEPATH, filePath)
 
         @JvmStatic
-        fun getResult(intent: Intent): String =
-                intent.getStringExtra(RESULT_FILEPATH)
+        fun getResult(intent: Intent): RecorderResult =
+                intent.getParcelableExtra(RESULT_FILEPATH)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -140,14 +139,14 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_progress.setProgress(p)
     }
 
-    override fun recordComplete(p: Int) {
+    override fun recordComplete() {
         recorder_progress.recordComplete()
         showCompleteView()
     }
 
     private fun showvideo_record_focus(x: Float, y: Float) {
-        Log.d(TAG, "focus x: $x, focus y: $y")
-        Log.d(TAG, "focus Width: ${recorder_focus.width}, focus Height: ${recorder_focus.height}")
+//        Log.d(TAG, "focus x: $x, focus y: $y")
+//        Log.d(TAG, "focus Width: ${recorder_focus.width}, focus Height: ${recorder_focus.height}")
         recorder_focus.x = x - recorder_focus.width / 2
         recorder_focus.y = y - recorder_focus.height / 2
         if (focusAni.isRunning) {
@@ -178,13 +177,15 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
                 hideCompleteView()
                 presenter.reconnect(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
             }
-            R.id.recorder_certainbtn -> {
-                val result = Intent()
-                result.putExtra(RESULT_FILEPATH, filePath)
-                setResult(RESULT_OK, result)
-                finish()
-            }
+            R.id.recorder_certainbtn -> presenter.setResult()
         }
+    }
+
+    override fun setResult(result: RecorderResult) {
+        val data = Intent()
+        data.putExtra(RESULT_FILEPATH, result)
+        setResult(RESULT_OK, data)
+        finish()
     }
 
     override fun playVideo(filePath: String) {
@@ -220,7 +221,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     private val svOnTouched = View.OnTouchListener { _, event ->
-        if (event.action == MotionEvent.ACTION_DOWN) {
+        if (event.action == MotionEvent.ACTION_DOWN && event.y <= recorder_progress.y) {
             showvideo_record_focus(event.x, event.y)
             return@OnTouchListener true
         }
