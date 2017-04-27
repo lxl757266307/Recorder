@@ -58,7 +58,7 @@ public class VideoProgressBtn extends View {
         bgPaint.setStyle(Paint.Style.FILL);
 
         paint = new Paint();
-        paint.setColor(0xFFA4C739);
+        paint.setColor(0xFF00FF00);
         paint.setAntiAlias(true);
         paint.setStrokeWidth(CIRCLE_LINE_WIDTH);
         paint.setStyle(Paint.Style.STROKE);
