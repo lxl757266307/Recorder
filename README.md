@@ -17,7 +17,7 @@ dependencies {
 
 
 
-在你的manifest中添加
+在manifest中添加
 
 ```xml
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
