@@ -27,9 +27,8 @@ import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
 
 @RuntimePermissions
-class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View, VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
-    private val TAG = "Camera"
-
+class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View,
+        VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
     private lateinit var filePath: String
     private lateinit var presenter: IRecorderContract.Presenter
     private lateinit var handler: Handler
@@ -58,7 +57,12 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         super.onCreate(savedInstanceState)
 //        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,  WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
-        RecorderPermissionsDispatcher.initViewWithCheck(this, savedInstanceState)
+        filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
+        presenter = RecorderPresenter()
+        presenter.attach(this, filePath)
+        initCamera()
+
+        RecorderPermissionsDispatcher.initViewWithCheck(this)
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {
@@ -67,11 +71,8 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     @NeedsPermission(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
-    fun initView(savedInstanceState: Bundle?) {
-        filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
+    fun initView() {
         handler = Handler()
-        presenter = RecorderPresenter()
-        presenter.attach(this, filePath)
 
         // 先让video_record_focus渲染一次，下面要用到其宽高
         focusAni.start()
@@ -84,6 +85,8 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_progress.setOnTouchListener(progressOnTouched)
         recorder_vv.setOnPreparedListener(this)
         recorder_vv.setOnTouchListener(svOnTouched)
+
+        presenter.startPreview()
     }
 
     @OnShowRationale(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
@@ -112,11 +115,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         RecorderPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults)
     }
 
-    override fun onResume() {
-        super.onResume()
-        initCamera()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         presenter.detach()
@@ -126,7 +124,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_vv.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
             override fun onGlobalLayout() {
                 recorder_vv.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                presenter.initCamera(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
+                presenter.init(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
             }
         })
     }
@@ -173,10 +171,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     override fun onClick(view: View) {
         when (view.id) {
             R.id.recorder_back -> finish()
-            R.id.recorder_cancelbtn -> {
-                hideCompleteView()
-                presenter.reconnect(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
-            }
+            R.id.recorder_cancelbtn -> { hideCompleteView(); presenter.reconnect() }
             R.id.recorder_certainbtn -> presenter.setResult()
         }
     }

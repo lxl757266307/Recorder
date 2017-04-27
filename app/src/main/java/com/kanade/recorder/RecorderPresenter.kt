@@ -6,7 +6,7 @@ import android.view.SurfaceHolder
 import android.view.View
 import java.io.File
 
-class RecorderPresenter : IRecorderContract.Presenter {
+class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     private val TAG = "CameraPresenter"
     private val MAX_DURATION = 10
     private var duration = 0f
@@ -29,7 +29,14 @@ class RecorderPresenter : IRecorderContract.Presenter {
         mediaRecorderManager.releaseMediaRecorder()
     }
 
-    override fun initCamera(holder: SurfaceHolder, width: Int, height: Int) = cameraManager.initCamera(holder, width, height)
+    override fun init(holder: SurfaceHolder, width: Int, height: Int) {
+        holder.addCallback(this)
+        cameraManager.init(holder, width, height)
+    }
+
+    override fun startPreview() {
+        cameraManager.connectCamera()
+    }
 
     override fun handleFocusMetering(x: Float, y: Float) = cameraManager.handleFocusMetering(x, y)
 
@@ -40,10 +47,10 @@ class RecorderPresenter : IRecorderContract.Presenter {
         }
     }
 
-    override fun reconnect(holder: SurfaceHolder, width: Int, height: Int) {
+    override fun reconnect() {
         view.stopVideo()
         deleteFile()
-        cameraManager.reconnect(holder, width, height)
+        cameraManager.connectCamera()
     }
 
     override fun recording() {
@@ -60,6 +67,17 @@ class RecorderPresenter : IRecorderContract.Presenter {
         view.setResult(result)
     }
 
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+        cameraManager.init(holder, width, height)
+    }
+
+    override fun surfaceDestroyed(holder: SurfaceHolder?) {
+        cameraManager.releaseCamera()
+    }
+
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        cameraManager.init(holder)
+    }
 
     private fun startRecord() {
         duration = 0f

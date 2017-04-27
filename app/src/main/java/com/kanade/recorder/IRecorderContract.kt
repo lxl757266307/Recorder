@@ -27,13 +27,15 @@ interface IRecorderContract {
 
         fun detach()
 
-        fun initCamera(holder: SurfaceHolder, width: Int, height: Int)
+        fun init(holder: SurfaceHolder, width: Int, height: Int)
+
+        fun startPreview()
 
         fun handleFocusMetering(x: Float, y: Float)
 
         fun onTouch(v: android.view.View, event: MotionEvent)
 
-        fun reconnect(holder: SurfaceHolder, width: Int, height: Int)
+        fun reconnect()
 
         fun setResult()
 

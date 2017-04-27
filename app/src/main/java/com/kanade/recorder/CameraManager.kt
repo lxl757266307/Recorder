@@ -7,7 +7,7 @@ import android.view.SurfaceHolder
 import java.util.*
 
 @Suppress("DEPRECATION")
-class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCallback {
+class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private val TAG = "CameraManager"
 
     private lateinit var holder: SurfaceHolder
@@ -19,51 +19,17 @@ class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCa
     private var width: Int = 0
     private var height: Int = 0
 
-    override fun initCamera(holder: SurfaceHolder, width: Int, height: Int) {
-        connect(holder, width, height)
-        holder.addCallback(this)
+    override fun init(holder: SurfaceHolder) {
+        this.holder = holder
     }
 
-    override fun reconnect(holder: SurfaceHolder, width: Int, height: Int) {
-        connect(holder, width, height)
-        startPreview(holder)
-    }
-
-    private fun connect(holder: SurfaceHolder, width: Int, height: Int) {
+    override fun init(holder: SurfaceHolder, width: Int, height: Int) {
         this.width = width
         this.height = height
         this.holder = holder
     }
 
-    fun getCamera(): Camera = camera
-
-    override fun releaseCamera() {
-        camera.setPreviewCallback(null)
-        camera.stopPreview()
-        camera.release()
-        isRelease = true
-        Log.d(TAG, "camera has release")
-    }
-
-    override fun onAutoFocus(success: Boolean, camera: Camera) {
-        if (success) {
-            camera.cancelAutoFocus()
-        }
-    }
-
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        this.holder = holder
-    }
-
-    override fun surfaceDestroyed(holder: SurfaceHolder?) {
-        if (!isRelease) releaseCamera()
-    }
-
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        startPreview(holder)
-    }
-
-    private fun startPreview(holder: SurfaceHolder) {
+    override fun connectCamera() {
         try {
             isRelease = false
             camera = Camera.open(0)
@@ -75,6 +41,24 @@ class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCa
             camera.startPreview()
         } catch (e: Exception) {
             camera.release()
+        }
+    }
+
+    fun getCamera(): Camera = camera
+
+    override fun releaseCamera() {
+        if (!isRelease) {
+            camera.setPreviewCallback(null)
+            camera.stopPreview()
+            camera.release()
+            isRelease = true
+            Log.d(TAG, "camera has release")
+        }
+    }
+
+    override fun onAutoFocus(success: Boolean, camera: Camera) {
+        if (success) {
+            camera.cancelAutoFocus()
         }
     }
 
@@ -232,6 +216,5 @@ class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCa
                 return -1
             }
         }
-
     }
 }
