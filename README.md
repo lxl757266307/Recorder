@@ -11,7 +11,7 @@ allprojects {
 }
 
 dependencies {
-	compile 'com.github.pye52:Recorder:1.0'
+	compile 'com.github.pye52:Recorder:1.0.1'
 }
 ```
 
