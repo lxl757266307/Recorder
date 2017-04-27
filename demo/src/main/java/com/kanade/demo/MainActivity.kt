@@ -1,25 +1,36 @@
 package com.kanade.demo
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.os.Environment
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
+import android.view.View
 import android.widget.Toast
 import com.kanade.recorder.Recorder
+import kotlinx.android.synthetic.main.activity_main.*
 import permissions.dispatcher.*
 import java.io.File
 
 @RuntimePermissions
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), View.OnClickListener {
+    private val RESULT = 1
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        MainActivityPermissionsDispatcher.initWithCheck(this)
+        recorder.setOnClickListener(this)
+        MainActivityPermissionsDispatcher.openRecorderWithCheck(this)
+    }
+
+    override fun onClick(v: View?) {
+        openRecorder()
     }
 
     @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    fun init() {
+    fun openRecorder() {
         val dir = Environment.getExternalStorageDirectory().toString() + File.separator + "recorder"
         val dirFile = File(dir)
         if (!dirFile.exists()) {
@@ -28,7 +39,7 @@ class MainActivity : AppCompatActivity() {
 
         val file = "video_" + System.currentTimeMillis() + ".mp4"
         val intent = Recorder.newIntent(this, dir + File.separator + file)
-        startActivity(intent)
+        startActivityForResult(intent, RESULT)
     }
 
     @OnShowRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)
@@ -55,5 +66,20 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         MainActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != Activity.RESULT_OK || data == null) {
+            recorder_result.text = getString(R.string.no_record)
+            return
+        }
+
+        if (requestCode == RESULT) {
+            val result = Recorder.getResult(data)
+            val file = File(result.filepath)
+            val size = file.length()
+            recorder_result.text = getString(R.string.success, result.filepath, size, result.duration)
+        }
     }
 }
