@@ -33,7 +33,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     private lateinit var presenter: IRecorderContract.Presenter
     private lateinit var handler: Handler
     // 是否正在播放
-    private var isPlay = false
+    private var isPlaying = false
 
     private val focusAni:AnimatorSet by lazy { initvideo_record_focusAni() }
     private val showCompleteAni:AnimatorSet by lazy { initShowSendViewAni() }
@@ -60,7 +60,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
         presenter = RecorderPresenter()
         presenter.attach(this, filePath)
-        initCamera()
 
         RecorderPermissionsDispatcher.initViewWithCheck(this)
     }
@@ -86,7 +85,13 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_vv.setOnPreparedListener(this)
         recorder_vv.setOnTouchListener(svOnTouched)
 
-        presenter.startPreview()
+        recorder_vv.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                recorder_vv.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                presenter.init(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
+                presenter.startPreview()
+            }
+        })
     }
 
     @OnShowRationale(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
@@ -120,15 +125,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         presenter.detach()
     }
 
-    private fun initCamera() {
-        recorder_vv.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                recorder_vv.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                presenter.init(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
-            }
-        })
-    }
-
     override fun startRecord() {
         recorder_progress.recording()
     }
@@ -142,9 +138,10 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         showCompleteView()
     }
 
-    private fun showvideo_record_focus(x: Float, y: Float) {
+    private fun focus(x: Float, y: Float) {
 //        Log.d(TAG, "focus x: $x, focus y: $y")
 //        Log.d(TAG, "focus Width: ${recorder_focus.width}, focus Height: ${recorder_focus.height}")
+        if (isPlaying) return
         recorder_focus.x = x - recorder_focus.width / 2
         recorder_focus.y = y - recorder_focus.height / 2
         if (focusAni.isRunning) {
@@ -191,11 +188,11 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
 
     override fun stopVideo() {
         recorder_vv.stopPlayback()
-        isPlay = false
+        isPlaying = false
     }
 
     override fun onPrepared(mp: MediaPlayer) {
-        isPlay = true
+        isPlaying = true
         mp.start()
         mp.isLooping = true
     }
@@ -216,8 +213,8 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     private val svOnTouched = View.OnTouchListener { _, event ->
-        if (event.action == MotionEvent.ACTION_DOWN && event.y <= recorder_progress.y) {
-            showvideo_record_focus(event.x, event.y)
+        if (event.action == MotionEvent.ACTION_DOWN && event.y <= recorder_progress.y && !isPlaying) {
+            focus(event.x, event.y)
             return@OnTouchListener true
         }
         return@OnTouchListener false

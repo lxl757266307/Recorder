@@ -21,7 +21,6 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     override fun attach(v: IRecorderContract.View, filePath: String) {
         this.view = v
         this.filePath = filePath
-        this.cameraManager = CameraManager()
         this.mediaRecorderManager = MediaRecorderManager()
     }
 
@@ -30,8 +29,9 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     }
 
     override fun init(holder: SurfaceHolder, width: Int, height: Int) {
-        holder.addCallback(this)
+        cameraManager = CameraManager()
         cameraManager.init(holder, width, height)
+        holder.addCallback(this)
     }
 
     override fun startPreview() {
@@ -40,17 +40,17 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
 
     override fun handleFocusMetering(x: Float, y: Float) = cameraManager.handleFocusMetering(x, y)
 
-    override fun onTouch(v: View, event: MotionEvent) {
+    override fun onTouch(v: View, event: MotionEvent) =
         when (event.action) {
             MotionEvent.ACTION_DOWN -> startRecord()
             MotionEvent.ACTION_UP -> recordComplete()
+            else -> {}
         }
-    }
 
     override fun reconnect() {
         view.stopVideo()
         deleteFile()
-        cameraManager.connectCamera()
+        startPreview()
     }
 
     override fun recording() {

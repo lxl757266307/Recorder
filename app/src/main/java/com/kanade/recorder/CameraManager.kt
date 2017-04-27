@@ -16,24 +16,27 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private val sizeComparator by lazy { CameraSizeComparator() }
 
     private var isRelease = false
+    private var isPreview = false
     private var width: Int = 0
     private var height: Int = 0
 
     override fun init(holder: SurfaceHolder) {
         this.holder = holder
+        if (isPreview) camera.setPreviewDisplay(holder)
     }
 
     override fun init(holder: SurfaceHolder, width: Int, height: Int) {
         this.width = width
         this.height = height
-        this.holder = holder
+        init(holder)
     }
 
     override fun connectCamera() {
+        if (isPreview) return
         try {
             isRelease = false
+            isPreview = true
             camera = Camera.open(0)
-            camera.setPreviewDisplay(holder)
             params = camera.parameters
             setParams(holder, params, width, height)
             camera.parameters = params
@@ -48,18 +51,17 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     override fun releaseCamera() {
         if (!isRelease) {
-            camera.setPreviewCallback(null)
+            camera.setPreviewDisplay(null)
             camera.stopPreview()
             camera.release()
             isRelease = true
+            isPreview = false
             Log.d(TAG, "camera has release")
         }
     }
 
     override fun onAutoFocus(success: Boolean, camera: Camera) {
-        if (success) {
-            camera.cancelAutoFocus()
-        }
+        if (success) camera.cancelAutoFocus()
     }
 
     /**
