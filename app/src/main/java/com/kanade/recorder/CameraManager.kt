@@ -51,7 +51,6 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     override fun releaseCamera() {
         if (!isRelease) {
-            camera.setPreviewDisplay(null)
             camera.stopPreview()
             camera.release()
             isRelease = true
