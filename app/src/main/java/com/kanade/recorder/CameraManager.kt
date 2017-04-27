@@ -108,8 +108,13 @@ class CameraManager : ICameraManager, SurfaceHolder.Callback, Camera.AutoFocusCa
 
             params.meteringAreas = meteringAreas
         }
-        camera.parameters = params
-        camera.autoFocus(this)
+
+        try {
+            camera.parameters = params
+            camera.autoFocus(this)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     /**
