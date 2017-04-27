@@ -140,7 +140,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
 
     private fun focus(x: Float, y: Float) {
 //        Log.d(TAG, "focus x: $x, focus y: $y")
-//        Log.d(TAG, "focus Width: ${recorder_focus.width}, focus Height: ${recorder_focus.height}")
+//        Log.d(TAG, "focus Width: ${recorder_focus_btn.width}, focus Height: ${recorder_focus_btn.height}")
         if (isPlaying) return
         recorder_focus.x = x - recorder_focus.width / 2
         recorder_focus.y = y - recorder_focus.height / 2

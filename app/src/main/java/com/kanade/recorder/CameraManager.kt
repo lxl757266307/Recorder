@@ -75,6 +75,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      * @param y
      */
      override fun handleFocusMetering(x: Float, y: Float) {
+        if (!isPreview || isRelease) return
         val focusRect = calculateTapArea(x, y, 1f)
         val meteringRect = calculateTapArea(x, y, 1.5f)
 
