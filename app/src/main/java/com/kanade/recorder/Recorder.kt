@@ -29,15 +29,14 @@ import permissions.dispatcher.OnPermissionDenied
 @RuntimePermissions
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View,
         VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
-    private lateinit var filePath: String
     private lateinit var presenter: IRecorderContract.Presenter
     private lateinit var handler: Handler
     // 是否正在播放
     private var isPlaying = false
 
-    private val focusAni:AnimatorSet by lazy { initvideo_record_focusAni() }
-    private val showCompleteAni:AnimatorSet by lazy { initShowSendViewAni() }
-    private val hideCompleteAni:AnimatorSet by lazy { initHideShowViewAni() }
+    private val focusAni: AnimatorSet by lazy { initvideo_record_focusAni() }
+    private val showCompleteAni: AnimatorSet by lazy { initShowSendViewAni() }
+    private val hideCompleteAni: AnimatorSet by lazy { initHideShowViewAni() }
     private val runnable: Runnable by lazy { initRunnable() }
 
     companion object {
@@ -57,16 +56,16 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         super.onCreate(savedInstanceState)
 //        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,  WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
-        filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
+        val filePath = intent.getStringExtra(ARG_FILEPATH)
         presenter = RecorderPresenter()
         presenter.attach(this, filePath)
 
         RecorderPermissionsDispatcher.initViewWithCheck(this)
     }
 
-    override fun onSaveInstanceState(outState: Bundle?) {
-        super.onSaveInstanceState(outState)
-        outState?.putString(ARG_FILEPATH, filePath)
+    override fun onStop() {
+        super.onStop()
+        finish()
     }
 
     @NeedsPermission(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
@@ -168,7 +167,9 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     override fun onClick(view: View) {
         when (view.id) {
             R.id.recorder_back -> finish()
-            R.id.recorder_cancelbtn -> { hideCompleteView(); presenter.reconnect() }
+            R.id.recorder_cancelbtn -> {
+                hideCompleteView(); presenter.reconnect()
+            }
             R.id.recorder_certainbtn -> presenter.setResult()
         }
     }
@@ -223,84 +224,74 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     private val progressOnTouched = View.OnTouchListener { v, event -> presenter.onTouch(v, event); true }
 
     private fun initvideo_record_focusAni(): AnimatorSet {
-        val focusScaleXAni = ObjectAnimator.ofFloat(recorder_focus, "scaleX", 1.5f, 1f)
-        val focusScaleYAni = ObjectAnimator.ofFloat(recorder_focus, "scaleY", 1.5f, 1f)
+        val focusScaleAni = scaleAnis(recorder_focus, 1.5f, 1f)
         val focusAlphaAni = ObjectAnimator.ofFloat(recorder_focus, "alpha", 1f, 0f)
         val set = AnimatorSet()
-        focusScaleXAni.duration = 500
-        focusScaleYAni.duration = 500
+        focusScaleAni.first.duration = 500
+        focusScaleAni.second.duration = 500
         focusAlphaAni.duration = 750
-        set.run {
-            play(focusScaleXAni)
-                    .with(focusScaleYAni)
-                    .before(focusAlphaAni)
-            addListener(object :AnimatorListenerAdapter(){
-                override fun onAnimationStart(animation: Animator?) {
-                    super.onAnimationStart(animation)
-                    recorder_focus.alpha = 1f
-                    recorder_focus.visibility = VISIBLE
-                }
+        set.play(focusScaleAni.first)
+                .with(focusScaleAni.second)
+                .before(focusAlphaAni)
+        set.addListener(object : AnimatorListenerAdapter() {
+            override fun onAnimationStart(animation: Animator?) {
+                super.onAnimationStart(animation)
+                recorder_focus.alpha = 1f
+                recorder_focus.visibility = VISIBLE
+            }
 
-                override fun onAnimationEnd(animation: Animator?) {
-                    super.onAnimationEnd(animation)
-                    recorder_focus.visibility = GONE
-                }
-            })
-        }
+            override fun onAnimationEnd(animation: Animator?) {
+                super.onAnimationEnd(animation)
+                recorder_focus.visibility = GONE
+            }
+        })
         return set
     }
 
-    private fun initShowSendViewAni(): AnimatorSet {
-        val cancelXAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleX", 0f, 1f)
-        val cancelYAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleY", 0f, 1f)
-        val certainXAni = ObjectAnimator.ofFloat(recorder_certainbtn, "scaleX", 0f, 1f)
-        val certainYAni = ObjectAnimator.ofFloat(recorder_certainbtn, "scaleY", 0f, 1f)
-        val processXAni = ObjectAnimator.ofFloat(recorder_progress, "scaleX", 1f, 0f)
-        val processYAni = ObjectAnimator.ofFloat(recorder_progress, "scaleY", 1f, 0f)
+    private fun initShowSendViewAni(): AnimatorSet =
+        animatorSet(350,
+                object : AnimatorListenerAdapter() {
+                    override fun onAnimationStart(animation: Animator?) {
+                        super.onAnimationStart(animation)
+                        recorder_back.visibility = GONE
+                        recorder_cancelbtn.visibility = VISIBLE
+                        recorder_certainbtn.visibility = VISIBLE
+                    }
+
+                    override fun onAnimationEnd(animation: Animator?) {
+                        super.onAnimationEnd(animation)
+                        recorder_progress.visibility = GONE
+                    }
+                },
+                scaleAnis(recorder_cancelbtn, 0f, 1f),
+                scaleAnis(recorder_certainbtn, 0f, 1f),
+                scaleAnis(recorder_progress, 1f, 0f))
+
+    private fun initHideShowViewAni(): AnimatorSet =
+            animatorSet(350,
+                    object : AnimatorListenerAdapter() {
+                        override fun onAnimationEnd(animation: Animator?) {
+                            super.onAnimationEnd(animation)
+                            recorder_progress.visibility = VISIBLE
+                            recorder_back.visibility = VISIBLE
+                            recorder_cancelbtn.visibility = GONE
+                            recorder_certainbtn.visibility = GONE
+                        }
+                    },
+                    scaleAnis(recorder_cancelbtn, 1f, 0f),
+                    scaleAnis(recorder_certainbtn, 1f, 0f),
+                    scaleAnis(recorder_progress, 0f, 1f))
+
+    private fun animatorSet(duration: Long, adapter: AnimatorListenerAdapter, vararg args: Pair<ObjectAnimator, ObjectAnimator>): AnimatorSet {
         val set = AnimatorSet()
-        set.run {
-            duration = 350
-            playTogether(cancelXAni, cancelYAni, certainXAni, certainYAni, processXAni, processYAni)
-            addListener(object :AnimatorListenerAdapter(){
-                override fun onAnimationStart(animation: Animator?) {
-                    super.onAnimationStart(animation)
-                    recorder_back.visibility = GONE
-                    recorder_cancelbtn.visibility = VISIBLE
-                    recorder_certainbtn.visibility = VISIBLE
-                }
-
-                override fun onAnimationEnd(animation: Animator?) {
-                    super.onAnimationEnd(animation)
-                    recorder_progress.visibility = GONE
-                }
-            })
-        }
+        set.duration = duration
+        args.forEach { set.playTogether(it.first, it.second) }
+        set.addListener(adapter)
         return set
     }
 
-    private fun initHideShowViewAni(): AnimatorSet {
-        val cancelXAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleX", 1f, 0f)
-        val cancelYAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleY", 1f, 0f)
-        val certainXAni = ObjectAnimator.ofFloat(recorder_certainbtn, "scaleX", 1f, 0f)
-        val certainYAni = ObjectAnimator.ofFloat(recorder_certainbtn, "scaleY", 1f, 0f)
-        val processXAni = ObjectAnimator.ofFloat(recorder_progress, "scaleX", 0f, 1f)
-        val processYAni = ObjectAnimator.ofFloat(recorder_progress, "scaleY", 0f, 1f)
-        val set = AnimatorSet()
-        set.run {
-            duration = 350
-            playTogether(cancelXAni, cancelYAni, certainXAni, certainYAni, processXAni, processYAni)
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator?) {
-                    super.onAnimationEnd(animation)
-                    recorder_progress.visibility = VISIBLE
-                    recorder_back.visibility = VISIBLE
-                    recorder_cancelbtn.visibility = GONE
-                    recorder_certainbtn.visibility = GONE
-                }
-            })
-        }
-        return set
-    }
+    private fun scaleAnis(target: View, from: Float, to: Float): Pair<ObjectAnimator, ObjectAnimator>
+            = Pair(ObjectAnimator.ofFloat(target, "scaleX", from, to), ObjectAnimator.ofFloat(target, "scaleY", from, to))
 
     override fun getContext(): Context = getContext()
 }
