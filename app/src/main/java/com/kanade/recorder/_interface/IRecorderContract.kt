@@ -1,15 +1,14 @@
-package com.kanade.recorder
+package com.kanade.recorder._interface
 
 import android.content.Context
 import android.view.MotionEvent
 import android.view.Surface
 import android.view.SurfaceHolder
+import com.kanade.recorder.RecorderResult
 
 interface IRecorderContract {
     interface View {
         fun getContext(): Context
-
-        fun startRecord()
 
         fun playVideo(filePath: String)
 
@@ -31,9 +30,11 @@ interface IRecorderContract {
 
         fun startPreview()
 
-        fun handleFocusMetering(x: Float, y: Float)
+        fun staretRecord()
 
-        fun onTouch(v: android.view.View, event: MotionEvent)
+        fun recordComplete()
+
+        fun handleFocusMetering(x: Float, y: Float)
 
         fun reconnect()
 

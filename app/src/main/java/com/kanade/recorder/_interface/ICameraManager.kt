@@ -1,13 +1,13 @@
-package com.kanade.recorder
+package com.kanade.recorder._interface
 
 import android.view.SurfaceHolder
 
 interface ICameraManager {
     fun getVideoSize(): Pair<Int, Int>
 
-    fun init(holder: SurfaceHolder)
+    fun init(holder: android.view.SurfaceHolder)
 
-    fun init(holder: SurfaceHolder, width: Int, height: Int)
+    fun init(holder: android.view.SurfaceHolder, width: Int, height: Int)
 
     fun connectCamera()
 

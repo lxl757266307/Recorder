@@ -22,22 +22,28 @@ import permissions.dispatcher.OnShowRationale
 import permissions.dispatcher.PermissionRequest
 import permissions.dispatcher.RuntimePermissions
 import android.support.v7.app.AlertDialog
+import android.util.Log
+import android.view.ViewConfiguration
 import android.widget.Toast
+import com.kanade.recorder.GestureImpl.ScaleGestureImpl
+import com.kanade.recorder._interface.IRecorderContract
+import com.kanade.recorder.widget.VideoProgressBtn
 import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
 
 @RuntimePermissions
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View,
         VideoProgressBtn.AniEndListener, MediaPlayer.OnPreparedListener {
-    private lateinit var filePath: String
+    private val TAG = "Recorder"
     private lateinit var presenter: IRecorderContract.Presenter
     private lateinit var handler: Handler
     // 是否正在播放
     private var isPlaying = false
 
-    private val focusAni:AnimatorSet by lazy { initvideo_record_focusAni() }
-    private val showCompleteAni:AnimatorSet by lazy { initShowSendViewAni() }
-    private val hideCompleteAni:AnimatorSet by lazy { initHideShowViewAni() }
+    private val focusAni by lazy { initFocusViewAni() }
+    private val showCompleteAni by lazy { initShowCompleteViewAni() }
+    private val hideCompleteAni by lazy { initHideCompleteViewAni() }
+    private val scaleGestureListener by lazy { initScaleGestureListener() }
     private val runnable: Runnable by lazy { initRunnable() }
 
     companion object {
@@ -57,16 +63,16 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         super.onCreate(savedInstanceState)
 //        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,  WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
-        filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
+        val filePath = savedInstanceState?.getString(ARG_FILEPATH) ?: intent.getStringExtra(ARG_FILEPATH)
         presenter = RecorderPresenter()
         presenter.attach(this, filePath)
 
         RecorderPermissionsDispatcher.initViewWithCheck(this)
     }
 
-    override fun onSaveInstanceState(outState: Bundle?) {
-        super.onSaveInstanceState(outState)
-        outState?.putString(ARG_FILEPATH, filePath)
+    override fun onStop() {
+        super.onStop()
+        finish()
     }
 
     @NeedsPermission(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
@@ -81,9 +87,9 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_certainbtn.setOnClickListener(this)
 
         recorder_progress.setListener(this)
-        recorder_progress.setOnTouchListener(progressOnTouched)
+        recorder_progress.setOnTouchListener(progressOnTouched())
         recorder_vv.setOnPreparedListener(this)
-        recorder_vv.setOnTouchListener(svOnTouched)
+        recorder_vv.setOnTouchListener(vvOnTouched)
 
         recorder_vv.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
             override fun onGlobalLayout() {
@@ -125,10 +131,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         presenter.detach()
     }
 
-    override fun startRecord() {
-        recorder_progress.recording()
-    }
-
     override fun updateProgress(p: Int) {
         recorder_progress.setProgress(p)
     }
@@ -141,7 +143,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     private fun focus(x: Float, y: Float) {
 //        Log.d(TAG, "focus x: $x, focus y: $y")
 //        Log.d(TAG, "focus Width: ${recorder_focus_btn.width}, focus Height: ${recorder_focus_btn.height}")
-        if (isPlaying) return
         recorder_focus.x = x - recorder_focus.width / 2
         recorder_focus.y = y - recorder_focus.height / 2
         if (focusAni.isRunning) {
@@ -181,30 +182,33 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     override fun playVideo(filePath: String) {
+        if (isPlaying) return
         recorder_vv.setVideoPath(filePath)
         recorder_vv.start()
-        recorder_vv.setOnPreparedListener(this)
     }
 
     override fun stopVideo() {
-        recorder_vv.stopPlayback()
+        if (!isPlaying) return
         isPlaying = false
+        recorder_vv.stopPlayback()
     }
 
     override fun onPrepared(mp: MediaPlayer) {
         isPlaying = true
-        mp.start()
         mp.isLooping = true
+        mp.start()
     }
 
     override fun touched() {
         handler.removeCallbacks(runnable)
         handler.post(runnable)
+        presenter.staretRecord()
     }
 
     override fun untouched() {
         recorder_progress.setProgress(0)
         handler.removeCallbacks(runnable)
+        presenter.recordComplete()
     }
 
     private fun initRunnable() = Runnable {
@@ -212,17 +216,53 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         handler.postDelayed(runnable, 100)
     }
 
-    private val svOnTouched = View.OnTouchListener { _, event ->
-        if (event.action == MotionEvent.ACTION_DOWN && event.y <= recorder_progress.y && !isPlaying) {
-            focus(event.x, event.y)
-            return@OnTouchListener true
-        }
-        return@OnTouchListener false
+    /**
+     * videoview触摸事件，将会处理两种事件: 双指缩放，单击对焦
+     *
+     * 当正处于播放录像的时候将不会进行处理
+     */
+    private val vvOnTouched = View.OnTouchListener { _, event ->
+        if (isPlaying) return@OnTouchListener true
+        return@OnTouchListener scaleGestureListener.onTouched(event)
     }
 
-    private val progressOnTouched = View.OnTouchListener { v, event -> presenter.onTouch(v, event); true }
+    private fun initScaleGestureListener(): ScaleGestureImpl =
+            ScaleGestureImpl(this, object : ScaleGestureImpl.GestureListener {
+                override fun onSingleTap(event: MotionEvent) = focus(event.x, event.y)
+                override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) {
+                    Log.d(TAG, "缩放")
+                }
+            })
 
-    private fun initvideo_record_focusAni(): AnimatorSet {
+    private inner class progressOnTouched : View.OnTouchListener {
+        private var downToucheY = 0f
+        private var touchSlop = 0f
+        init {
+            val configuration = ViewConfiguration.get(this@Recorder)
+            touchSlop = configuration.scaledTouchSlop.toFloat()
+        }
+        override fun onTouch(v: View?, event: MotionEvent): Boolean {
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    downToucheY = event.y
+                    recorder_progress.startRecord()
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val distance = downToucheY - event.y
+                    if (distance > touchSlop) {
+                        Log.d(TAG, "pregress btn 上滑")
+                    }
+                }
+                MotionEvent.ACTION_UP -> {
+                    downToucheY = Float.MAX_VALUE
+                    recorder_progress.recordComplete()
+                }
+            }
+            return true
+        }
+    }
+
+    private fun initFocusViewAni(): AnimatorSet {
         val focusScaleXAni = ObjectAnimator.ofFloat(recorder_focus, "scaleX", 1.5f, 1f)
         val focusScaleYAni = ObjectAnimator.ofFloat(recorder_focus, "scaleY", 1.5f, 1f)
         val focusAlphaAni = ObjectAnimator.ofFloat(recorder_focus, "alpha", 1f, 0f)
@@ -250,7 +290,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         return set
     }
 
-    private fun initShowSendViewAni(): AnimatorSet {
+    private fun initShowCompleteViewAni(): AnimatorSet {
         val cancelXAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleX", 0f, 1f)
         val cancelYAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleY", 0f, 1f)
         val certainXAni = ObjectAnimator.ofFloat(recorder_certainbtn, "scaleX", 0f, 1f)
@@ -278,7 +318,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         return set
     }
 
-    private fun initHideShowViewAni(): AnimatorSet {
+    private fun initHideCompleteViewAni(): AnimatorSet {
         val cancelXAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleX", 1f, 0f)
         val cancelYAni = ObjectAnimator.ofFloat(recorder_cancelbtn, "scaleY", 1f, 0f)
         val certainXAni = ObjectAnimator.ofFloat(recorder_certainbtn, "scaleX", 1f, 0f)

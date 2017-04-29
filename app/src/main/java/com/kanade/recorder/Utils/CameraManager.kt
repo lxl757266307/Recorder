@@ -1,9 +1,10 @@
-package com.kanade.recorder
+package com.kanade.recorder.Utils
 
 import android.graphics.Rect
 import android.hardware.Camera
 import android.util.Log
 import android.view.SurfaceHolder
+import com.kanade.recorder._interface.ICameraManager
 import java.util.*
 
 @Suppress("DEPRECATION")
@@ -123,7 +124,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         }
     }
 
-    private fun setParams(holder:SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
+    private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
         // 获取最合适的视频尺寸(预览和录像)
         val supportPreviewSizes = params.supportedPreviewSizes
         val screenProp = height / width.toFloat()

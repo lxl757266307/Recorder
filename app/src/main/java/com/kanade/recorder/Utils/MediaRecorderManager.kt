@@ -1,25 +1,20 @@
-package com.kanade.recorder
-
-import android.hardware.Camera
-import android.media.CamcorderProfile
-import android.media.MediaRecorder
-import android.util.Log
+package com.kanade.recorder.Utils
 
 class MediaRecorderManager {
     private val TAG = "MediaRecorderManager"
     private var isRecording = false
-    private var camera: Camera? = null
-    private var recorder: MediaRecorder? = null
+    private var camera: android.hardware.Camera? = null
+    private var recorder: android.media.MediaRecorder? = null
 
-    fun record(camera: Camera, profile: CamcorderProfile, filePath: String) {
+    fun record(camera: android.hardware.Camera, profile: android.media.CamcorderProfile, filePath: String) {
         this.camera = camera
         if (isRecording) {
             try {
-                recorder?.stop()  // stop the recording
+                recorder?.stop()  // stop the startRecord
             } catch (e: RuntimeException) {
                 // RuntimeException is thrown when stop() is called immediately after start().
                 // In this case the output file is not properly constructed ans should be deleted.
-                Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
+                android.util.Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
             }
 
             releaseMediaRecorder() // release the MediaRecorder object
@@ -30,7 +25,7 @@ class MediaRecorderManager {
                 isRecording = true
             } catch (r: RuntimeException) {
                 releaseMediaRecorder()
-                Log.d(TAG, "RuntimeException: start() is called immediately after stop()")
+                android.util.Log.d(TAG, "RuntimeException: start() is called immediately after stop()")
             }
         }
     }
@@ -41,7 +36,7 @@ class MediaRecorderManager {
             try {
                 recorder?.stop()
             } catch (r: RuntimeException) {
-                Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
+                android.util.Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
             } finally {
                 releaseMediaRecorder()
             }
@@ -62,14 +57,14 @@ class MediaRecorderManager {
         recorder = null
     }
 
-    private fun prepareRecord(camera: Camera, profile: CamcorderProfile, filePath: String): Boolean {
+    private fun prepareRecord(camera: android.hardware.Camera, profile: android.media.CamcorderProfile, filePath: String): Boolean {
         try {
-            recorder = MediaRecorder()
+            recorder = android.media.MediaRecorder()
             recorder?.let { recorder ->
                 camera.unlock()
                 recorder.setCamera(camera)
-                recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-                recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
+                recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
+                recorder.setVideoSource(android.media.MediaRecorder.VideoSource.CAMERA)
                 recorder.setOrientationHint(90)
                 recorder.setProfile(profile)
                 recorder.setOutputFile(filePath)
@@ -77,7 +72,7 @@ class MediaRecorderManager {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            Log.d(TAG, "Exception prepareRecord: ")
+            android.util.Log.d(TAG, "Exception prepareRecord: ")
             releaseMediaRecorder()
             return false
         }

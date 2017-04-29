@@ -1,4 +1,4 @@
-package com.kanade.recorder
+package com.kanade.recorder.widget
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
@@ -13,7 +13,6 @@ import android.view.View
 
 class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private val TAG = "VideoProgressBar"
-    private val MAX_PROGRESS = 100
     private val CIRCLE_LINE_WIDTH = 10
     // 动画持续时间
     private val ANI_DURATION = 350
@@ -66,7 +65,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
         rectF.right = progressSize - (CIRCLE_LINE_WIDTH / 2).toFloat() - 1.5f
         rectF.bottom = progressSize - (CIRCLE_LINE_WIDTH / 2).toFloat() - 1.5f
 
-        val p = progress.toFloat() / MAX_PROGRESS * 360
+        val p = progress.toFloat() / 100 * 360
         canvas.drawCircle(circleCenter.toFloat(), circleCenter.toFloat(), progressSize / 2 - 1f, bgPaint)
         canvas.drawCircle(circleCenter.toFloat(), circleCenter.toFloat(), btnSize / 3 - 1f, btnPaint)
         if (!isAni) canvas.drawArc(rectF, -90f, p, false, paint)
@@ -75,14 +74,14 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         if (initSize == 0 || maxSize == 0) {
-            initSize = View.MeasureSpec.getSize(widthMeasureSpec)
+            initSize = MeasureSpec.getSize(widthMeasureSpec)
             maxSize = Math.ceil((initSize * ZOOM_IN).toDouble()).toInt()
             circleCenter = maxSize / 2
         }
         setMeasuredDimension(maxSize, maxSize)
     }
 
-    fun recording() {
+    fun startRecord() {
         val progressAni = ValueAnimator.ofFloat(progressScale, ZOOM_IN)
         val btnAni = ValueAnimator.ofFloat(btnScale, 0.5f)
         progressAni.addUpdateListener(progressListener)

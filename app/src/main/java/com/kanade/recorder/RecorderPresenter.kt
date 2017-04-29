@@ -1,9 +1,11 @@
 package com.kanade.recorder
 
 import android.media.CamcorderProfile
-import android.view.MotionEvent
 import android.view.SurfaceHolder
-import android.view.View
+import com.kanade.recorder.Utils.CameraManager
+import com.kanade.recorder.Utils.MediaRecorderManager
+import com.kanade.recorder._interface.ICameraManager
+import com.kanade.recorder._interface.IRecorderContract
 import java.io.File
 
 class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
@@ -40,17 +42,17 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
 
     override fun handleFocusMetering(x: Float, y: Float) = cameraManager.handleFocusMetering(x, y)
 
-    override fun onTouch(v: View, event: MotionEvent) =
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> startRecord()
-            MotionEvent.ACTION_UP -> recordComplete()
-            else -> {}
-        }
-
     override fun reconnect() {
         view.stopVideo()
         deleteFile()
         startPreview()
+    }
+
+    override fun staretRecord() {
+        duration = 0f
+        isRecording = true
+        val camera = (cameraManager as CameraManager).getCamera()
+        mediaRecorderManager.record(camera, profile, filePath)
     }
 
     override fun recording() {
@@ -59,6 +61,16 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         view.updateProgress((sec / MAX_DURATION * 100).toInt())
         if (sec > MAX_DURATION) {
             recordComplete()
+        }
+    }
+
+    override fun recordComplete() {
+        if (isRecording) {
+            isRecording = false
+            mediaRecorderManager.stopRecord()
+            cameraManager.releaseCamera()
+            view.recordComplete()
+            view.playVideo(filePath)
         }
     }
 
@@ -79,33 +91,9 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         cameraManager.init(holder)
     }
 
-    private fun startRecord() {
-        duration = 0f
-        isRecording = true
-        view.startRecord()
-        val camera = (cameraManager as CameraManager).getCamera()
-        mediaRecorderManager.record(camera, profile, filePath)
-    }
-
-    private fun recordComplete() {
-        if (isRecording) {
-            stopRecord()
-            view.recordComplete()
-            view.playVideo(filePath)
-        }
-    }
-
-    private fun stopRecord() {
-        mediaRecorderManager.stopRecord()
-        cameraManager.releaseCamera()
-        isRecording = false
-    }
-
     private fun deleteFile() {
         val file = File(filePath)
-        if (file.exists()) {
-            file.delete()
-        }
+        if (file.exists()) file.delete()
     }
 
     private fun initProfile(): CamcorderProfile {
