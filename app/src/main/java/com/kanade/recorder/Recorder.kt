@@ -11,25 +11,22 @@ import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AppCompatActivity
-import android.view.MotionEvent
-import android.view.View
 import android.view.View.GONE
 import android.view.View.VISIBLE
-import android.view.ViewTreeObserver.OnGlobalLayoutListener
 import kotlinx.android.synthetic.main.activity_recorder.*
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnShowRationale
 import permissions.dispatcher.PermissionRequest
 import permissions.dispatcher.RuntimePermissions
 import android.support.v7.app.AlertDialog
-import android.util.Log
-import android.view.ViewConfiguration
+import android.view.*
 import android.widget.Toast
 import com.kanade.recorder.GestureImpl.ScaleGestureImpl
 import com.kanade.recorder._interface.IRecorderContract
 import com.kanade.recorder.widget.VideoProgressBtn
 import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
+import android.util.DisplayMetrics
 
 @RuntimePermissions
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View,
@@ -91,13 +88,10 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         recorder_vv.setOnPreparedListener(this)
         recorder_vv.setOnTouchListener(vvOnTouched)
 
-        recorder_vv.viewTreeObserver.addOnGlobalLayoutListener(object : OnGlobalLayoutListener {
-            override fun onGlobalLayout() {
-                recorder_vv.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                presenter.init(recorder_vv.holder, recorder_vv.width, recorder_vv.height)
-                presenter.startPreview()
-            }
-        })
+        val dm = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(dm)
+        presenter.init(recorder_vv.holder, dm.widthPixels, dm.heightPixels)
+        presenter.startPreview()
     }
 
     @OnShowRationale(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
@@ -228,14 +222,16 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
 
     private fun initScaleGestureListener(): ScaleGestureImpl =
             ScaleGestureImpl(this, object : ScaleGestureImpl.GestureListener {
-                override fun onSingleTap(event: MotionEvent) = focus(event.x, event.y)
-                override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) {
-                    Log.d(TAG, "缩放")
+                override fun onSingleTap(event: MotionEvent) {
+                    // 录像按钮以下位置不允许对焦
+                    if (event.y < recorder_progress.y) focus(event.x, event.y)
                 }
+                override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) = presenter.handleZoom(scaleFactor > 1f)
             })
 
     private inner class progressOnTouched : View.OnTouchListener {
-        private var downToucheY = 0f
+        private var firstTouchY = 0f
+        private var lastTouchY = 0f
         private var touchSlop = 0f
         init {
             val configuration = ViewConfiguration.get(this@Recorder)
@@ -244,17 +240,19 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         override fun onTouch(v: View?, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    downToucheY = event.y
+                    firstTouchY = event.y
+                    lastTouchY = event.y
                     recorder_progress.startRecord()
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    val distance = downToucheY - event.y
-                    if (distance > touchSlop) {
-                        Log.d(TAG, "pregress btn 上滑")
-                    }
+                    if (event.y >= firstTouchY) return true
+                    val distance = lastTouchY - event.y
+                    lastTouchY = event.y
+                    presenter.handleZoom(distance > 0)
                 }
                 MotionEvent.ACTION_UP -> {
-                    downToucheY = Float.MAX_VALUE
+                    firstTouchY = Float.MAX_VALUE
+                    lastTouchY = Float.MAX_VALUE
                     recorder_progress.recordComplete()
                 }
             }

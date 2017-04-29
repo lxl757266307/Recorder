@@ -6,18 +6,22 @@ import android.util.Log
 import android.view.SurfaceHolder
 import com.kanade.recorder._interface.ICameraManager
 import java.util.*
+import java.util.concurrent.locks.ReentrantLock
 
 @Suppress("DEPRECATION")
 class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private val TAG = "CameraManager"
 
+    private val lock = ReentrantLock()
     private lateinit var holder: SurfaceHolder
     private lateinit var camera: Camera
     private lateinit var params: Camera.Parameters
     private val sizeComparator by lazy { CameraSizeComparator() }
 
-    private var isRelease = false
+    private var isRelease = true
     private var isPreview = false
+    private var svWidth: Int = 0    // 初始传入surfaceview的width
+    private var svHeight: Int = 0   // 初始传入surfaceview的height
     private var width: Int = 0
     private var height: Int = 0
 
@@ -76,32 +80,35 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      * @param y
      */
      override fun handleFocusMetering(x: Float, y: Float) {
-        if (!isPreview || isRelease) return
-        val focusRect = calculateTapArea(x, y, 1f)
-        val meteringRect = calculateTapArea(x, y, 1.5f)
+        lock(lock, {
+            if (!isPreview || isRelease) return@lock
+            val focusRect = calculateTapArea(x, y, 1f)
+            val meteringRect = calculateTapArea(x, y, 1.5f)
 
-        params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
+            params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
 
-        if (params.maxNumFocusAreas > 0) {
-            val focusAreas = ArrayList<Camera.Area>()
-            focusAreas.add(Camera.Area(focusRect, 1000))
+            if (params.maxNumFocusAreas > 0) {
+                val focusAreas = ArrayList<Camera.Area>()
+                focusAreas.add(Camera.Area(focusRect, 1000))
 
-            params.focusAreas = focusAreas
-        }
+                params.focusAreas = focusAreas
+            }
 
-        if (params.maxNumMeteringAreas > 0) {
-            val meteringAreas = ArrayList<Camera.Area>()
-            meteringAreas.add(Camera.Area(meteringRect, 1000))
+            if (params.maxNumMeteringAreas > 0) {
+                val meteringAreas = ArrayList<Camera.Area>()
+                meteringAreas.add(Camera.Area(meteringRect, 1000))
 
-            params.meteringAreas = meteringAreas
-        }
+                params.meteringAreas = meteringAreas
+            }
 
-        try {
-            camera.parameters = params
-            camera.autoFocus(this)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+            try {
+                camera.parameters = params
+                camera.autoFocus(this)
+            } catch (e: Exception) {
+                Log.d(TAG, "focus error")
+                e.printStackTrace()
+            }
+        })
     }
 
     /**
@@ -109,7 +116,8 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      * @param isZoomIn
      */
     override fun handleZoom(isZoomIn: Boolean) {
-        if (params.isZoomSupported) {
+        lock(lock, {
+            if (!isPreview || isRelease || !params.isZoomSupported) return@lock
             val maxZoom = params.maxZoom
             var zoom = params.zoom
             if (isZoomIn && zoom < maxZoom) {
@@ -117,14 +125,21 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             } else if (zoom > 0) {
                 zoom--
             }
+
             params.zoom = zoom
-            camera.parameters = params
-        } else {
-            Log.i(TAG, "zoom not supported")
-        }
+
+            try {
+                camera.parameters = params
+            } catch (e: Exception) {
+                Log.d(TAG, "zoom error")
+                e.printStackTrace()
+            }
+        })
     }
 
     private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
+        this.svWidth = width
+        this.svHeight = height
         // 获取最合适的视频尺寸(预览和录像)
         val supportPreviewSizes = params.supportedPreviewSizes
         val screenProp = height / width.toFloat()
@@ -191,9 +206,9 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         val focusAreaSize = 300f
         val areaSize = java.lang.Float.valueOf(focusAreaSize * coefficient)!!.toInt()
 
-        val left = clamp((x / height * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
+        val left = clamp((x / svWidth * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
         val right = clamp(left + areaSize, -1000, 1000)
-        val top = clamp((y / width * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
+        val top = clamp((y / svHeight * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
         val bottom = clamp(top + areaSize, -1000, 1000)
 
         return Rect(left, top, right, bottom)

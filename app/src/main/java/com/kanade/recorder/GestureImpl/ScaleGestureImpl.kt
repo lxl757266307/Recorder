@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 
 class ScaleGestureImpl(ctx: Context, var listener: GestureListener): ScaleGestureDetector.SimpleOnScaleGestureListener() {
+    private var isMulti = false
     private val scaleGesture = ScaleGestureDetector(ctx, this)
 
     fun onTouched(event: MotionEvent): Boolean {
@@ -15,8 +16,14 @@ class ScaleGestureImpl(ctx: Context, var listener: GestureListener): ScaleGestur
 
     @SuppressLint("Recycle")
     private fun processTouchEvent(event: MotionEvent): Boolean {
-        if (event.pointerCount <= 1 && event.action == MotionEvent.ACTION_UP) {
-            listener.onSingleTap(event)
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> if (event.pointerCount > 1) isMulti = true
+            MotionEvent.ACTION_UP -> {
+                if (event.pointerCount <= 1) {
+                    if (!isMulti) listener.onSingleTap(event)
+                    isMulti = false
+                }
+            }
         }
         return true
     }

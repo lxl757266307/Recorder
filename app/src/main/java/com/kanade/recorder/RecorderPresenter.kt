@@ -27,6 +27,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     }
 
     override fun detach() {
+        view.stopVideo()
         mediaRecorderManager.releaseMediaRecorder()
     }
 
@@ -41,6 +42,8 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     }
 
     override fun handleFocusMetering(x: Float, y: Float) = cameraManager.handleFocusMetering(x, y)
+
+    override fun handleZoom(isZoom: Boolean) = cameraManager.handleZoom(isZoom)
 
     override fun reconnect() {
         view.stopVideo()
@@ -106,6 +109,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         profile.videoFrameWidth = size.first
         profile.videoFrameHeight = size.second
         profile.videoBitRate = size.first * size.second
+        profile.audioBitRate = 96000
         return profile
     }
 }

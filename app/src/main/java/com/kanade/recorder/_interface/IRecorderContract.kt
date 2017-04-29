@@ -38,7 +38,7 @@ interface IRecorderContract {
 
         fun handleFocusMetering(x: Float, y: Float)
 
-        fun zoom()
+        fun handleZoom(isZoom: Boolean)
 
         fun reconnect()
 
