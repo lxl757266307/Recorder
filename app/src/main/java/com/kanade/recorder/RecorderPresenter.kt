@@ -45,6 +45,8 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
 
     override fun handleZoom(isZoom: Boolean) = cameraManager.handleZoom(isZoom)
 
+    override fun handleZoom(zoom: Int) = cameraManager.handleZoom(zoom)
+
     override fun reconnect() {
         view.stopVideo()
         deleteFile()

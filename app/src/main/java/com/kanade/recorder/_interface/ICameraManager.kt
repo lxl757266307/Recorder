@@ -15,5 +15,7 @@ interface ICameraManager {
 
     fun handleZoom(isZoomIn: Boolean)
 
+    fun handleZoom(zoom: Int)
+
     fun releaseCamera()
 }

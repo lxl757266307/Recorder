@@ -137,6 +137,20 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         })
     }
 
+    override fun handleZoom(zoom: Int) {
+        lock(lock, {
+            if (!isPreview || isRelease || !params.isZoomSupported) return@lock
+            val maxZoom = params.maxZoom
+            params.zoom = Math.min(zoom, maxZoom)
+            try {
+                camera.parameters = params
+            } catch (e: Exception) {
+                Log.d(TAG, "zoom error")
+                e.printStackTrace()
+            }
+        })
+    }
+
     private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
         this.svWidth = width
         this.svHeight = height

@@ -40,6 +40,8 @@ interface IRecorderContract {
 
         fun handleZoom(isZoom: Boolean)
 
+        fun handleZoom(zoom: Int)
+
         fun reconnect()
 
         fun setResult()

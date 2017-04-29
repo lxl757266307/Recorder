@@ -231,7 +231,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
 
     private inner class progressOnTouched : View.OnTouchListener {
         private var firstTouchY = 0f
-        private var lastTouchY = 0f
         private var touchSlop = 0f
         init {
             val configuration = ViewConfiguration.get(this@Recorder)
@@ -240,19 +239,16 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         override fun onTouch(v: View?, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    firstTouchY = event.y
-                    lastTouchY = event.y
+                    firstTouchY = recorder_vv.y
                     recorder_progress.startRecord()
                 }
+                // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
                 MotionEvent.ACTION_MOVE -> {
-                    if (event.y >= firstTouchY) return true
-                    val distance = lastTouchY - event.y
-                    lastTouchY = event.y
-                    presenter.handleZoom(distance > 0)
+                    if (event.y >= recorder_vv.y) return true
+                    val distance = firstTouchY - event.y
+                    presenter.handleZoom(distance.toInt())
                 }
                 MotionEvent.ACTION_UP -> {
-                    firstTouchY = Float.MAX_VALUE
-                    lastTouchY = Float.MAX_VALUE
                     recorder_progress.recordComplete()
                 }
             }
