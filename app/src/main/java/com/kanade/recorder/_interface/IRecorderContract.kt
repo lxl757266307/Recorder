@@ -32,14 +32,16 @@ interface IRecorderContract {
 
         fun staretRecord()
 
+        fun recording()
+
         fun recordComplete()
 
         fun handleFocusMetering(x: Float, y: Float)
 
+        fun zoom()
+
         fun reconnect()
 
         fun setResult()
-
-        fun recording()
     }
 }

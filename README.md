@@ -2,6 +2,8 @@
 
 参考微信实现的短视频录像
 
+![预览](https://github.com/pye52/Recorder/blob/master/recorder.gif)
+
 ```groovy
 allprojects {
 	repositories {
@@ -11,7 +13,7 @@ allprojects {
 }
 
 dependencies {
-	compile 'com.github.pye52:Recorder:1.0.1'
+	compile 'com.github.pye52:Recorder:1.0.4'
 }
 ```
 
