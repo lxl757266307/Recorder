@@ -246,7 +246,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
                 MotionEvent.ACTION_MOVE -> {
                     if (event.y >= recorder_vv.y) return true
                     val distance = firstTouchY - event.y
-                    presenter.handleZoom(distance.toInt())
+                    presenter.handleZoom((distance / 10).toInt())
                 }
                 MotionEvent.ACTION_UP -> {
                     recorder_progress.recordComplete()
