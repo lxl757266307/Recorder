@@ -64,9 +64,8 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         duration++
         val sec = duration / 10.0
         view.updateProgress((sec / MAX_DURATION * 100).toInt())
-        if (sec > MAX_DURATION) {
+        if (sec > MAX_DURATION)
             recordComplete()
-        }
     }
 
     override fun recordComplete() {

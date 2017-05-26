@@ -1,6 +1,7 @@
 <resources>
     <string name="button_allow">确定</string>
     <string name="button_deny">拒绝</string>
+    <string name="camera_error">设备不支持拍照功能</string>
     <string name="permission_recorder_rationale">请允许以下权限，以便正常使用录像功能\n1、读写权限，以便保存路线文件\n2、录音权限\n3、摄像头使用权限</string>
     <string name="permission_recorder_denied">你禁止了录像的权限，无法正常启动，请到设置界面允许相关权限</string>
 </resources>
