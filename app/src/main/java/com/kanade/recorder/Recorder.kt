@@ -257,25 +257,28 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     private fun initFocusViewAni(): AnimatorSet {
         val focusScaleAni = scaleAnis(recorder_focus, 1.5f, 1f)
         val focusAlphaAni = ObjectAnimator.ofFloat(recorder_focus, "alpha", 1f, 0f)
-        val set = AnimatorSet()
         focusScaleAni.first.duration = 500
         focusScaleAni.second.duration = 500
         focusAlphaAni.duration = 750
-        set.play(focusScaleAni.first)
-                .with(focusScaleAni.second)
-                .before(focusAlphaAni)
-        set.addListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationStart(animation: Animator?) {
-                super.onAnimationStart(animation)
-                recorder_focus.alpha = 1f
-                recorder_focus.visibility = VISIBLE
-            }
+        val set = AnimatorSet()
+                .apply {
+                    play(focusScaleAni.first)
+                            .with(focusScaleAni.second)
+                            .before(focusAlphaAni)
 
-            override fun onAnimationEnd(animation: Animator?) {
-                super.onAnimationEnd(animation)
-                recorder_focus.visibility = GONE
-            }
-        })
+                    addListener(object : AnimatorListenerAdapter() {
+                        override fun onAnimationStart(animation: Animator?) {
+                            super.onAnimationStart(animation)
+                            recorder_focus.alpha = 1f
+                            recorder_focus.visibility = VISIBLE
+                        }
+
+                        override fun onAnimationEnd(animation: Animator?) {
+                            super.onAnimationEnd(animation)
+                            recorder_focus.visibility = GONE
+                        }
+                    })
+                }
         return set
     }
 

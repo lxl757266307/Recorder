@@ -1,6 +1,5 @@
 package com.kanade.recorder.Utils
 
-import android.graphics.Rect
 import android.hardware.Camera
 import android.util.Log
 import android.view.SurfaceHolder
@@ -147,7 +146,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
         // 获取最合适的视频尺寸(预览和录像)
-        val supportPreviewSizes = params.supportedPreviewSizes
+        val supportPreviewSizes = params.supportedPreviewSizes.map { RecorderSize(it.height, it.width) }
         val screenProp = height / width.toFloat()
         val optimalSize = getBestSize(supportPreviewSizes, 1000, screenProp)
         this.svWidth = optimalSize.width
@@ -165,80 +164,5 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         supportFocusModes.indices
                 .filter { supportFocusModes[it] == Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO }
                 .forEach { params.focusMode = supportFocusModes[it] }
-    }
-
-    private fun getBestSize(list: List<Camera.Size>, th: Int, rate: Float): Camera.Size {
-        Collections.sort(list, sizeComparator)
-        var i = 0
-        for (s in list) {
-            if (s.width > th && equalRate(s, rate)) {
-                Log.i(TAG, "MakeSure Preview :w = " + s.width + " h = " + s.height)
-                break
-            }
-            i++
-        }
-        if (i == list.size) {
-            return getBestSize(list, rate)
-        } else {
-            return list[i]
-        }
-    }
-
-    private fun getBestSize(list: List<Camera.Size>, rate: Float): Camera.Size {
-        var previewDisparity = 100f
-        var index = 0
-        for (i in list.indices) {
-            val cur = list[i]
-            val prop = cur.width.toFloat() / cur.height.toFloat()
-            if (Math.abs(rate - prop) < previewDisparity) {
-                previewDisparity = Math.abs(rate - prop)
-                index = i
-            }
-        }
-        return list[index]
-    }
-
-
-    private fun equalRate(s: Camera.Size, rate: Float): Boolean {
-        val r = s.width.toFloat() / s.height.toFloat()
-        return Math.abs(r - rate) <= 0.2
-    }
-
-    /**
-     * Convert touch position x:y to [Camera.Area] position -1000:-1000 to 1000:1000.
-     * 注意这里长边是width
-     */
-    private fun calculateTapArea(x: Float, y: Float, coefficient: Float): Rect {
-        val focusAreaSize = 300f
-        val areaSize = java.lang.Float.valueOf(focusAreaSize * coefficient)!!.toInt()
-
-        val left = clamp((x / svWidth * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
-        val right = clamp(left + areaSize, -1000, 1000)
-        val top = clamp((y / svHeight * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
-        val bottom = clamp(top + areaSize, -1000, 1000)
-
-        return Rect(left, top, right, bottom)
-    }
-
-    private fun clamp(x: Int, min: Int, max: Int): Int {
-        if (x > max) {
-            return max
-        }
-        if (x < min) {
-            return min
-        }
-        return x
-    }
-
-    private inner class CameraSizeComparator : Comparator<Camera.Size> {
-        override fun compare(lhs: Camera.Size, rhs: Camera.Size): Int {
-            if (lhs.width == rhs.width) {
-                return 0
-            } else if (lhs.width > rhs.width) {
-                return 1
-            } else {
-                return -1
-            }
-        }
     }
 }
