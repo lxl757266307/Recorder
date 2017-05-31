@@ -24,14 +24,40 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private var paint: Paint = Paint()
     private var rectF: RectF = RectF()
 
+    // 按钮初始大小(按下后会变大)
     private var initSize = 0
+    // 按钮完全按下后的大小
     private var maxSize = 0
-    private var circleCenter = 0
+    private var circleCenter = 0f
 
     private var isAni = false
     private var btnScale = 1f
     private var progressScale = 1f
     private var progress = 0
+
+    private val touchedAniSet by lazy {
+        val progressAni = ValueAnimator.ofFloat(progressScale, ZOOM_IN)
+        val btnAni = ValueAnimator.ofFloat(btnScale, 0.5f)
+        progressAni.addUpdateListener(progressListener)
+        btnAni.addUpdateListener(btnListener)
+        AnimatorSet().apply {
+            playTogether(progressAni, btnAni)
+            addListener(touchedAdapter)
+            duration = ANI_DURATION.toLong()
+        }
+    }
+
+    private val untouchedAniSet by lazy {
+        val progressAni = ValueAnimator.ofFloat(progressScale, 1f)
+        val btnAni = ValueAnimator.ofFloat(btnScale, 1f)
+        progressAni.addUpdateListener(progressListener)
+        btnAni.addUpdateListener(btnListener)
+        AnimatorSet().apply {
+            playTogether(progressAni, btnAni)
+            addListener(untouchedAdapter)
+            duration = ANI_DURATION.toLong()
+        }
+    }
 
     private var listener: AniEndListener? = null
 
@@ -66,8 +92,8 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
         rectF.bottom = progressSize - (CIRCLE_LINE_WIDTH / 2).toFloat() - 1.5f
 
         val p = progress.toFloat() / 100 * 360
-        canvas.drawCircle(circleCenter.toFloat(), circleCenter.toFloat(), progressSize / 2 - 1f, bgPaint)
-        canvas.drawCircle(circleCenter.toFloat(), circleCenter.toFloat(), btnSize / 3 - 1f, btnPaint)
+        canvas.drawCircle(circleCenter, circleCenter, progressSize / 2 - 1f, bgPaint)
+        canvas.drawCircle(circleCenter, circleCenter, btnSize / 3 - 1f, btnPaint)
         if (!isAni) canvas.drawArc(rectF, -90f, p, false, paint)
     }
 
@@ -76,7 +102,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
         if (initSize == 0 || maxSize == 0) {
             initSize = MeasureSpec.getSize(widthMeasureSpec)
             maxSize = Math.ceil((initSize * ZOOM_IN).toDouble()).toInt()
-            circleCenter = maxSize / 2
+            circleCenter = (maxSize / 2).toFloat()
         }
         setMeasuredDimension(maxSize, maxSize)
     }
@@ -108,6 +134,10 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     }
 
     private val touchedAdapter = object : AnimatorListenerAdapter() {
+        override fun onAnimationCancel(animation: Animator?) {
+            super.onAnimationCancel(animation)
+        }
+
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
             isAni = false
