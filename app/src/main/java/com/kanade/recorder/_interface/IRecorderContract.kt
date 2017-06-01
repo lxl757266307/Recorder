@@ -8,7 +8,7 @@ import com.kanade.recorder.RecorderResult
 
 interface IRecorderContract {
     interface View {
-        fun getContext(): Context
+        fun Context(): Context
 
         fun playVideo(filePath: String)
 
@@ -45,5 +45,7 @@ interface IRecorderContract {
         fun reconnect()
 
         fun setResult()
+
+        fun getContext(): Context
     }
 }

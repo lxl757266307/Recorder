@@ -35,30 +35,6 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private var progressScale = 1f
     private var progress = 0
 
-    private val touchedAniSet by lazy {
-        val progressAni = ValueAnimator.ofFloat(progressScale, ZOOM_IN)
-        val btnAni = ValueAnimator.ofFloat(btnScale, 0.5f)
-        progressAni.addUpdateListener(progressListener)
-        btnAni.addUpdateListener(btnListener)
-        AnimatorSet().apply {
-            playTogether(progressAni, btnAni)
-            addListener(touchedAdapter)
-            duration = ANI_DURATION.toLong()
-        }
-    }
-
-    private val untouchedAniSet by lazy {
-        val progressAni = ValueAnimator.ofFloat(progressScale, 1f)
-        val btnAni = ValueAnimator.ofFloat(btnScale, 1f)
-        progressAni.addUpdateListener(progressListener)
-        btnAni.addUpdateListener(btnListener)
-        AnimatorSet().apply {
-            playTogether(progressAni, btnAni)
-            addListener(untouchedAdapter)
-            duration = ANI_DURATION.toLong()
-        }
-    }
-
     private var listener: AniEndListener? = null
 
     init {

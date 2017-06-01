@@ -1,5 +1,6 @@
 package com.kanade.recorder
 
+import android.content.Context
 import android.media.CamcorderProfile
 import android.view.SurfaceHolder
 import com.kanade.recorder.Utils.CameraManager
@@ -114,4 +115,6 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         profile.audioBitRate = 96000
         return profile
     }
+
+    override fun getContext(): Context = view.Context()
 }

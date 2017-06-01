@@ -248,9 +248,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
                     val distance = firstTouchY - event.y
                     presenter.handleZoom((distance / 10).toInt())
                 }
-                MotionEvent.ACTION_UP -> {
-                    recorder_progress.recordComplete()
-                }
+                MotionEvent.ACTION_UP -> recorder_progress.recordComplete()
             }
             return true
         }
@@ -328,5 +326,5 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
             = Pair(ObjectAnimator.ofFloat(target, "scaleX", from, to), ObjectAnimator.ofFloat(target, "scaleY", from, to))
 
 
-    override fun getContext(): Context = getContext()
+    override fun Context(): Context = this
 }
