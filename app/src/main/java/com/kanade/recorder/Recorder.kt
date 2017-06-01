@@ -7,6 +7,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
@@ -27,6 +28,7 @@ import com.kanade.recorder.widget.VideoProgressBtn
 import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
 import android.util.DisplayMetrics
+import java.io.File
 
 @RuntimePermissions
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View,
@@ -34,8 +36,6 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     private val TAG = "Recorder"
     private lateinit var presenter: IRecorderContract.Presenter
     private lateinit var handler: Handler
-    // 是否正在播放
-    private var isPlaying = false
 
     private val focusAni by lazy { initFocusViewAni() }
     private val showCompleteAni by lazy { initShowCompleteViewAni() }
@@ -90,6 +90,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
 
         val dm = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(dm)
+
         presenter.init(recorder_vv.holder, dm.widthPixels, dm.heightPixels)
         presenter.startPreview()
     }
@@ -123,6 +124,10 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     override fun onDestroy() {
         super.onDestroy()
         presenter.detach()
+    }
+
+    override fun notice(content: String) {
+        Toast.makeText(this, content, Toast.LENGTH_LONG).show()
     }
 
     override fun updateProgress(p: Int) {
@@ -176,19 +181,16 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
     }
 
     override fun playVideo(filePath: String) {
-        if (isPlaying) return
+        if (recorder_vv.isPlaying) return
         recorder_vv.setVideoPath(filePath)
-        recorder_vv.start()
     }
 
     override fun stopVideo() {
-        if (!isPlaying) return
-        isPlaying = false
+        if (!recorder_vv.isPlaying) return
         recorder_vv.stopPlayback()
     }
 
     override fun onPrepared(mp: MediaPlayer) {
-        isPlaying = true
         mp.isLooping = true
         mp.start()
     }
@@ -216,7 +218,7 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
      * 当正处于播放录像的时候将不会进行处理
      */
     private val vvOnTouched = View.OnTouchListener { _, event ->
-        if (isPlaying) return@OnTouchListener true
+        if (recorder_vv.isPlaying) return@OnTouchListener true
         return@OnTouchListener scaleGestureListener.onTouched(event)
     }
 

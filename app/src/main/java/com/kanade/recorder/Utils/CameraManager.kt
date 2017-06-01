@@ -20,10 +20,10 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     private var isRelease = true
     private var isPreview = false
-    private var svWidth: Int = 0    // 初始传入surfaceview的width
-    private var svHeight: Int = 0   // 初始传入surfaceview的height
-    private var width: Int = 0
-    private var height: Int = 0
+    private var svWidth: Int = 0
+    private var svHeight: Int = 0
+    private var initWidth: Int = 0
+    private var initHeight: Int = 0
 
     override fun init(holder: SurfaceHolder) {
         this.holder = holder
@@ -31,8 +31,8 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     }
 
     override fun init(holder: SurfaceHolder, width: Int, height: Int) {
-        this.width = width
-        this.height = height
+        this.initWidth = width
+        this.initHeight = height
         init(holder)
     }
 
@@ -43,7 +43,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             isPreview = true
             camera = Camera.open(0)
             params = camera.parameters
-            setParams(holder, params, width, height)
+            setParams(holder, params, initWidth, initHeight)
             camera.parameters = params
             camera.setDisplayOrientation(90)
             camera.startPreview()
@@ -71,7 +71,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     /**
      * @return first => width, second => height
      */
-    override fun getVideoSize(): Pair<Int, Int> = Pair(width, height)
+    override fun getVideoSize(): Pair<Int, Int> = Pair(svWidth, svHeight)
 
     /**
      * 对焦
@@ -152,23 +152,21 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     }
 
     private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
-        this.svWidth = width
-        this.svHeight = height
         // 获取最合适的视频尺寸(预览和录像)
         val supportPreviewSizes = params.supportedPreviewSizes
         val screenProp = height / width.toFloat()
         val optimalSize = getBestSize(supportPreviewSizes, 1000, screenProp)
-        this.width = optimalSize.width
-        this.height = optimalSize.height
+        this.svWidth = optimalSize.width
+        this.svHeight = optimalSize.height
 
         // 设置holder
-        holder.setFixedSize(this.width, this.height)
+        holder.setFixedSize(svWidth, svHeight)
         holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
 
         // 设置params
         params.zoom = 1
-        params.setPreviewSize(this.width, this.height)
-        params.setPictureSize(this.width, this.height)
+        params.setPreviewSize(svWidth, svHeight)
+        params.setPictureSize(svWidth, svHeight)
         val supportFocusModes = params.supportedFocusModes
         supportFocusModes.indices
                 .filter { supportFocusModes[it] == Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO }

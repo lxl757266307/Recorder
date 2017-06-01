@@ -10,6 +10,8 @@ interface IRecorderContract {
     interface View {
         fun Context(): Context
 
+        fun notice(content: String)
+
         fun playVideo(filePath: String)
 
         fun stopVideo()

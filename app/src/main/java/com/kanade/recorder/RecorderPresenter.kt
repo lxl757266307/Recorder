@@ -74,9 +74,14 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         if (isRecording) {
             isRecording = false
             mediaRecorderManager.stopRecord()
-            cameraManager.releaseCamera()
-            view.recordComplete()
-            view.playVideo(filePath)
+            val sec = duration / 10.0
+            if (sec < 1) {
+                view.notice(getContext().getString(R.string.record_too_short))
+            } else {
+                cameraManager.releaseCamera()
+                view.recordComplete()
+                view.playVideo(filePath)
+            }
         }
     }
 
@@ -86,7 +91,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-        cameraManager.init(holder, width, height)
+        cameraManager.init(holder)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder?) {
@@ -98,8 +103,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     }
 
     private fun deleteFile() {
-        val file = File(filePath)
-        if (file.exists()) file.delete()
+        File(filePath).run { if (exists()) delete() }
     }
 
     private fun initProfile(): CamcorderProfile {
