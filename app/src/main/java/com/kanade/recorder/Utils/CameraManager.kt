@@ -48,7 +48,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             camera.setDisplayOrientation(90)
             camera.startPreview()
         } catch (e: Exception) {
-            camera.release()
+//            camera.release()
         }
     }
 
