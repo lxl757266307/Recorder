@@ -15,7 +15,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private val lock = ReentrantLock()
     private lateinit var holder: SurfaceHolder
     private lateinit var params: Camera.Parameters
-    private var camera: Camera = Camera.open(0)
+    private var camera: Camera? = null
     private val sizeComparator by lazy { CameraSizeComparator() }
 
     private var isRelease = true
@@ -27,7 +27,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     override fun init(holder: SurfaceHolder) {
         this.holder = holder
-        if (isPreview) camera.setPreviewDisplay(holder)
+        if (isPreview) camera?.setPreviewDisplay(holder)
     }
 
     override fun init(holder: SurfaceHolder, width: Int, height: Int) {
@@ -41,22 +41,26 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         try {
             isRelease = false
             isPreview = true
-            params = camera.parameters
-            setParams(holder, params, initWidth, initHeight)
-            camera.parameters = params
-            camera.setDisplayOrientation(90)
-            camera.startPreview()
+            camera = Camera.open(0)
+            camera?.let { camera ->
+                params = camera.parameters
+                setParams(holder, params, initWidth, initHeight)
+                camera.parameters = params
+                camera.setDisplayOrientation(90)
+                camera.startPreview()
+            }
+
         } catch (e: Exception) {
-            camera.release()
+            camera?.release()
         }
     }
 
-    fun getCamera(): Camera = camera
+    fun getCamera(): Camera? = camera
 
     override fun releaseCamera() {
         if (!isRelease) {
-            camera.stopPreview()
-            camera.release()
+            camera?.stopPreview()
+            camera?.release()
             isRelease = true
             isPreview = false
             Log.d(TAG, "camera has release")
@@ -101,8 +105,8 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             }
 
             try {
-                camera.parameters = params
-                camera.autoFocus(this)
+                camera?.parameters = params
+                camera?.autoFocus(this)
             } catch (e: Exception) {
                 Log.d(TAG, "focus error")
                 e.printStackTrace()
@@ -128,7 +132,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             params.zoom = zoom
 
             try {
-                camera.parameters = params
+                camera?.parameters = params
             } catch (e: Exception) {
                 Log.d(TAG, "zoom error")
                 e.printStackTrace()
@@ -142,7 +146,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             val maxZoom = params.maxZoom
             params.zoom = Math.min(zoom, maxZoom)
             try {
-                camera.parameters = params
+                camera?.parameters = params
             } catch (e: Exception) {
                 Log.d(TAG, "zoom error")
                 e.printStackTrace()

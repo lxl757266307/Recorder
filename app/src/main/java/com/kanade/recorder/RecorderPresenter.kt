@@ -57,7 +57,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     override fun staretRecord() {
         duration = 0f
         isRecording = true
-        val camera = (cameraManager as CameraManager).getCamera()
+        val camera = (cameraManager as CameraManager).getCamera() ?: return
         mediaRecorderManager.record(camera, profile, filePath)
     }
 
