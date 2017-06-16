@@ -14,8 +14,8 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     private val lock = ReentrantLock()
     private lateinit var holder: SurfaceHolder
-    private lateinit var camera: Camera
     private lateinit var params: Camera.Parameters
+    private var camera: Camera = Camera.open(0)
     private val sizeComparator by lazy { CameraSizeComparator() }
 
     private var isRelease = true
@@ -41,14 +41,13 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         try {
             isRelease = false
             isPreview = true
-            camera = Camera.open(0)
             params = camera.parameters
             setParams(holder, params, initWidth, initHeight)
             camera.parameters = params
             camera.setDisplayOrientation(90)
             camera.startPreview()
         } catch (e: Exception) {
-//            camera.release()
+            camera.release()
         }
     }
 
