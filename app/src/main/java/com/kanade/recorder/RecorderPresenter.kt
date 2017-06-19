@@ -57,7 +57,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     override fun staretRecord() {
         duration = 0f
         isRecording = true
-        val camera = (cameraManager as CameraManager).getCamera() ?: return
+        val camera = (cameraManager as CameraManager).getCamera()
         mediaRecorderManager.record(camera, profile, filePath)
     }
 
@@ -98,9 +98,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         cameraManager.releaseCamera()
     }
 
-    override fun surfaceCreated(holder: SurfaceHolder) {
-        cameraManager.init(holder)
-    }
+    override fun surfaceCreated(holder: SurfaceHolder) = Unit
 
     private fun deleteFile() {
         File(filePath).run { if (exists()) delete() }

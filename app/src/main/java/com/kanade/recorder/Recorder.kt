@@ -7,7 +7,6 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
@@ -28,7 +27,6 @@ import com.kanade.recorder.widget.VideoProgressBtn
 import permissions.dispatcher.OnNeverAskAgain
 import permissions.dispatcher.OnPermissionDenied
 import android.util.DisplayMetrics
-import java.io.File
 
 @RuntimePermissions
 class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.View,

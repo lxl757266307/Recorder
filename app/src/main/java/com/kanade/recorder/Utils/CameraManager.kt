@@ -6,16 +6,14 @@ import android.util.Log
 import android.view.SurfaceHolder
 import com.kanade.recorder._interface.ICameraManager
 import java.util.*
-import java.util.concurrent.locks.ReentrantLock
 
 @Suppress("DEPRECATION")
 class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private val TAG = "CameraManager"
 
-    private val lock = ReentrantLock()
     private lateinit var holder: SurfaceHolder
     private lateinit var params: Camera.Parameters
-    private var camera: Camera? = null
+    private lateinit var camera: Camera
     private val sizeComparator by lazy { CameraSizeComparator() }
 
     private var isRelease = true
@@ -27,7 +25,9 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     override fun init(holder: SurfaceHolder) {
         this.holder = holder
-        if (isPreview) camera?.setPreviewDisplay(holder)
+        if (isPreview) {
+            camera.setPreviewDisplay(holder)
+        }
     }
 
     override fun init(holder: SurfaceHolder, width: Int, height: Int) {
@@ -42,25 +42,22 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
             isRelease = false
             isPreview = true
             camera = Camera.open(0)
-            camera?.let { camera ->
-                params = camera.parameters
-                setParams(holder, params, initWidth, initHeight)
-                camera.parameters = params
-                camera.setDisplayOrientation(90)
-                camera.startPreview()
-            }
-
+            params = camera.parameters
+            setParams(holder, params, initWidth, initHeight)
+            camera.parameters = params
+            camera.setDisplayOrientation(90)
+            camera.startPreview()
         } catch (e: Exception) {
-            camera?.release()
+            Log.e(TAG, e.toString())
         }
     }
 
-    fun getCamera(): Camera? = camera
+    fun getCamera(): Camera = camera
 
     override fun releaseCamera() {
         if (!isRelease) {
-            camera?.stopPreview()
-            camera?.release()
+            camera.stopPreview()
+            camera.release()
             isRelease = true
             isPreview = false
             Log.d(TAG, "camera has release")
@@ -82,76 +79,70 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      * *
      * @param y
      */
-     override fun handleFocusMetering(x: Float, y: Float) {
-        lock(lock, {
-            if (!isPreview || isRelease) return@lock
-            val focusRect = calculateTapArea(x, y, 1f)
-            val meteringRect = calculateTapArea(x, y, 1.5f)
+     override @Synchronized fun handleFocusMetering(x: Float, y: Float) {
+        if (!isPreview || isRelease) return
+        val focusRect = calculateTapArea(x, y, 1f)
+        val meteringRect = calculateTapArea(x, y, 1.5f)
 
-            params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
+        params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
 
-            if (params.maxNumFocusAreas > 0) {
-                val focusAreas = ArrayList<Camera.Area>()
-                focusAreas.add(Camera.Area(focusRect, 1000))
+        if (params.maxNumFocusAreas > 0) {
+            val focusAreas = ArrayList<Camera.Area>()
+            focusAreas.add(Camera.Area(focusRect, 1000))
 
-                params.focusAreas = focusAreas
-            }
+            params.focusAreas = focusAreas
+        }
 
-            if (params.maxNumMeteringAreas > 0) {
-                val meteringAreas = ArrayList<Camera.Area>()
-                meteringAreas.add(Camera.Area(meteringRect, 1000))
+        if (params.maxNumMeteringAreas > 0) {
+            val meteringAreas = ArrayList<Camera.Area>()
+            meteringAreas.add(Camera.Area(meteringRect, 1000))
 
-                params.meteringAreas = meteringAreas
-            }
+            params.meteringAreas = meteringAreas
+        }
 
-            try {
-                camera?.parameters = params
-                camera?.autoFocus(this)
-            } catch (e: Exception) {
-                Log.d(TAG, "focus error")
-                e.printStackTrace()
-            }
-        })
+        try {
+            camera.parameters = params
+            camera.autoFocus(this)
+        } catch (e: Exception) {
+            Log.d(TAG, "focus error")
+            e.printStackTrace()
+        }
     }
 
     /**
      * 缩放
      * @param isZoomIn
      */
-    override fun handleZoom(isZoomIn: Boolean) {
-        lock(lock, {
-            if (!isPreview || isRelease || !params.isZoomSupported) return@lock
-            val maxZoom = params.maxZoom
-            var zoom = params.zoom
-            if (isZoomIn && zoom < maxZoom) {
-                zoom++
-            } else if (zoom > 0) {
-                zoom--
-            }
+    override @Synchronized fun handleZoom(isZoomIn: Boolean) {
+        if (!isPreview || isRelease || !params.isZoomSupported) return
+        val maxZoom = params.maxZoom
+        var zoom = params.zoom
+        if (isZoomIn && zoom < maxZoom) {
+            zoom++
+        } else if (zoom > 0) {
+            zoom--
+        }
 
-            params.zoom = zoom
+        params.zoom = zoom
 
-            try {
-                camera?.parameters = params
-            } catch (e: Exception) {
-                Log.d(TAG, "zoom error")
-                e.printStackTrace()
-            }
-        })
+        try {
+            camera.parameters = params
+        } catch (e: Exception) {
+            Log.d(TAG, "zoom error")
+            e.printStackTrace()
+        }
     }
 
-    override fun handleZoom(zoom: Int) {
-        lock(lock, {
-            if (!isPreview || isRelease || !params.isZoomSupported) return@lock
-            val maxZoom = params.maxZoom
-            params.zoom = Math.min(zoom, maxZoom)
-            try {
-                camera?.parameters = params
-            } catch (e: Exception) {
-                Log.d(TAG, "zoom error")
-                e.printStackTrace()
-            }
-        })
+    override @Synchronized fun handleZoom(zoom: Int) {
+        if (!isPreview || isRelease || !params.isZoomSupported) return
+        val maxZoom = params.maxZoom
+        params.zoom = Math.min(zoom, maxZoom)
+        try {
+            camera.parameters = params
+        } catch (e: Exception) {
+            Log.d(TAG, "zoom error")
+            e.printStackTrace()
+        }
     }
 
     private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
