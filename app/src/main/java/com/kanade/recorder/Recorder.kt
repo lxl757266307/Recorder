@@ -254,80 +254,64 @@ class Recorder : AppCompatActivity(), View.OnClickListener, IRecorderContract.Vi
         }
     }
 
-    private fun initFocusViewAni(): AnimatorSet {
-        val focusScaleAni = scaleAnis(recorder_focus, 1.5f, 1f)
-        val focusAlphaAni = ObjectAnimator.ofFloat(recorder_focus, "alpha", 1f, 0f)
-        focusScaleAni.first.duration = 500
-        focusScaleAni.second.duration = 500
-        focusAlphaAni.duration = 750
-        val set = AnimatorSet()
-                .apply {
-                    play(focusScaleAni.first)
-                            .with(focusScaleAni.second)
-                            .before(focusAlphaAni)
+    private fun initFocusViewAni(): AnimatorSet =
+            AnimatorSet {
+                listener = object : AnimatorListenerAdapter() {
+                    override fun onAnimationStart(animation: Animator?) {
+                        super.onAnimationStart(animation)
+                        recorder_focus.alpha = 1f
+                        recorder_focus.visibility = VISIBLE
+                    }
 
-                    addListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationStart(animation: Animator?) {
-                            super.onAnimationStart(animation)
-                            recorder_focus.alpha = 1f
-                            recorder_focus.visibility = VISIBLE
-                        }
-
-                        override fun onAnimationEnd(animation: Animator?) {
-                            super.onAnimationEnd(animation)
-                            recorder_focus.visibility = GONE
-                        }
-                    })
+                    override fun onAnimationEnd(animation: Animator?) {
+                        super.onAnimationEnd(animation)
+                        recorder_focus.visibility = GONE
+                    }
                 }
-        return set
-    }
+                invoke {
+                    play(ObjectAnimator.ofFloat(recorder_focus, "scaleX", 1.5f, 1f).apply { duration = 500 })
+                            .with(ObjectAnimator.ofFloat(recorder_focus, "scaleXY", 1.5f, 1f).apply { duration = 500 })
+                            .before(ObjectAnimator.ofFloat(recorder_focus, "alpha", 1f, 0f).apply { duration = 750 })
+                }
+            }
 
     private fun initShowCompleteViewAni(): AnimatorSet =
-            animatorSet(350,
-                    object : AnimatorListenerAdapter() {
-                        override fun onAnimationStart(animation: Animator?) {
-                            super.onAnimationStart(animation)
-                            recorder_back.visibility = GONE
-                            recorder_cancelbtn.visibility = VISIBLE
-                            recorder_certainbtn.visibility = VISIBLE
-                        }
+            AnimatorSet {
+                duration = 350
+                listener = object : AnimatorListenerAdapter() {
+                    override fun onAnimationStart(animation: Animator?) {
+                        super.onAnimationStart(animation)
+                        recorder_back.visibility = GONE
+                        recorder_cancelbtn.visibility = VISIBLE
+                        recorder_certainbtn.visibility = VISIBLE
+                    }
 
-                        override fun onAnimationEnd(animation: Animator?) {
-                            super.onAnimationEnd(animation)
-                            recorder_progress.visibility = GONE
-                        }
-                    },
-                    scaleAnis(recorder_cancelbtn, 0f, 1f),
-                    scaleAnis(recorder_certainbtn, 0f, 1f),
-                    scaleAnis(recorder_progress, 1f, 0f))
+                    override fun onAnimationEnd(animation: Animator?) {
+                        super.onAnimationEnd(animation)
+                        recorder_progress.visibility = GONE
+                    }
+                }
+                scaleAnis(recorder_cancelbtn, 0f, 1f)
+                scaleAnis(recorder_certainbtn, 0f, 1f)
+                scaleAnis(recorder_progress, 1f, 0f)
+            }
 
     private fun initHideCompleteViewAni(): AnimatorSet =
-            animatorSet(350,
-                    object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator?) {
-                            super.onAnimationEnd(animation)
-                            recorder_progress.visibility = VISIBLE
-                            recorder_back.visibility = VISIBLE
-                            recorder_cancelbtn.visibility = GONE
-                            recorder_certainbtn.visibility = GONE
-                        }
-                    },
-                    scaleAnis(recorder_cancelbtn, 1f, 0f),
-                    scaleAnis(recorder_certainbtn, 1f, 0f),
-                    scaleAnis(recorder_progress, 0f, 1f))
-
-
-    private fun animatorSet(duration: Long, adapter: AnimatorListenerAdapter, vararg args: Pair<ObjectAnimator, ObjectAnimator>): AnimatorSet {
-        val set = AnimatorSet()
-        set.duration = duration
-        args.forEach { set.playTogether(it.first, it.second) }
-        set.addListener(adapter)
-        return set
-    }
-
-    private fun scaleAnis(target: View, from: Float, to: Float): Pair<ObjectAnimator, ObjectAnimator>
-            = Pair(ObjectAnimator.ofFloat(target, "scaleX", from, to), ObjectAnimator.ofFloat(target, "scaleY", from, to))
-
+            AnimatorSet {
+                duration = 350
+                listener = object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator?) {
+                        super.onAnimationEnd(animation)
+                        recorder_progress.visibility = VISIBLE
+                        recorder_back.visibility = VISIBLE
+                        recorder_cancelbtn.visibility = GONE
+                        recorder_certainbtn.visibility = GONE
+                    }
+                }
+                scaleAnis(recorder_cancelbtn, 1f, 0f)
+                scaleAnis(recorder_certainbtn, 1f, 0f)
+                scaleAnis(recorder_progress, 0f, 1f)
+            }
 
     override fun Context(): Context = this
 }
