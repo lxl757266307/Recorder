@@ -5,16 +5,12 @@ import android.content.Intent
 import android.media.MediaPlayer
 import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_recorder.*
-import android.view.*
-import com.kanade.recorder.GestureImpl.ScaleGestureImpl
 import com.kanade.recorder._interface.IRecorderContract
 import android.util.DisplayMetrics
 
-class Recorder : BaseActivity(), IRecorderContract.View, MediaPlayer.OnPreparedListener {
+class Recorder : BaseActivity(), IRecorderContract.View {
     private val TAG = "Recorder"
     private lateinit var presenter: IRecorderContract.Presenter
-
-    private val scaleGestureListener by lazy { initScaleGestureListener() }
 
     companion object {
         private const val RESULT_FILEPATH = "result_filepath"
@@ -42,9 +38,6 @@ class Recorder : BaseActivity(), IRecorderContract.View, MediaPlayer.OnPreparedL
 
     override fun checkPermission() {
         super.checkPermission()
-        recorder_vv.setOnPreparedListener(this)
-        recorder_vv.setOnTouchListener(vvOnTouched)
-
         val dm = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(dm)
 
@@ -70,12 +63,8 @@ class Recorder : BaseActivity(), IRecorderContract.View, MediaPlayer.OnPreparedL
         startShowCompleteAni()
     }
 
-    private fun focus(x: Float, y: Float) {
-//        Log.d(TAG, "focus x: $x, focus y: $y")
-//        Log.d(TAG, "focus Width: ${recorder_focus_btn.width}, focus Height: ${recorder_focus_btn.height}")
-        recorder_focus.x = x - recorder_focus.width / 2
-        recorder_focus.y = y - recorder_focus.height / 2
-        startFocusAni()
+    override fun focus(x: Float, y: Float) {
+        super.focus(x, y)
         presenter.handleFocusMetering(x, y)
     }
 
@@ -94,8 +83,9 @@ class Recorder : BaseActivity(), IRecorderContract.View, MediaPlayer.OnPreparedL
         presenter.handleZoom(zoom)
     }
 
-    override fun getSurfaceY(): Float {
-        return recorder_vv.y
+    override fun zoom(isZoom: Boolean) {
+        super.zoom(isZoom)
+        presenter.handleZoom(isZoom)
     }
 
     override fun setResult(result: RecorderResult) {
@@ -106,13 +96,11 @@ class Recorder : BaseActivity(), IRecorderContract.View, MediaPlayer.OnPreparedL
     }
 
     override fun playVideo(filePath: String) {
-        if (recorder_vv.isPlaying) return
-        recorder_vv.setVideoPath(filePath)
+        play(filePath)
     }
 
     override fun stopVideo() {
-        if (!recorder_vv.isPlaying) return
-        recorder_vv.stopPlayback()
+        stopPlay()
     }
 
     override fun onPrepared(mp: MediaPlayer) {
@@ -134,25 +122,6 @@ class Recorder : BaseActivity(), IRecorderContract.View, MediaPlayer.OnPreparedL
         presenter.recording()
         return super.initRunnable()
     }
-
-    /**
-     * videoview触摸事件，将会处理两种事件: 双指缩放，单击对焦
-     *
-     * 当正处于播放录像的时候将不会进行处理
-     */
-    private val vvOnTouched = View.OnTouchListener { _, event ->
-        if (recorder_vv.isPlaying) return@OnTouchListener true
-        return@OnTouchListener scaleGestureListener.onTouched(event)
-    }
-
-    private fun initScaleGestureListener(): ScaleGestureImpl =
-            ScaleGestureImpl(this, object : ScaleGestureImpl.GestureListener {
-                override fun onSingleTap(event: MotionEvent) {
-                    // 录像按钮以下位置不允许对焦
-                    if (event.y < recorder_progress.y) focus(event.x, event.y)
-                }
-                override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) = presenter.handleZoom(scaleFactor > 1f)
-            })
 
     override fun getContext(): Context = getContext()
 }

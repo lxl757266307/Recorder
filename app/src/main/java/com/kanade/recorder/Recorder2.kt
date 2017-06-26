@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
+import android.util.DisplayMetrics
 import android.view.*
 import android.widget.Toast
 import com.kanade.recorder.Utils.MediaRecorderManager
@@ -59,6 +60,11 @@ class Recorder2 : BaseActivity() {
         override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) = Unit
     }
 
+    private val initSize: RecorderSize by lazy {
+        val dm = DisplayMetrics()
+        windowManager.defaultDisplay.getMetrics(dm)
+        RecorderSize(dm.heightPixels, dm.widthPixels)
+    }
     private lateinit var optimalSize: RecorderSize
     private lateinit var mediaRecorderManager: MediaRecorderManager
 
@@ -71,12 +77,11 @@ class Recorder2 : BaseActivity() {
     private val mCameraOpenCloseLock = Semaphore(1)
 
     private val mStateCallback = object : CameraDevice.StateCallback() {
-
         override fun onOpened(cameraDevice: CameraDevice) {
             mCameraDevice = cameraDevice
             startPreview()
             mCameraOpenCloseLock.release()
-            configureTransform(recorder_tv.width, recorder_tv.height)
+            configureTransform(initSize.width, initSize.height)
         }
 
         override fun onDisconnected(cameraDevice: CameraDevice) {
@@ -91,7 +96,6 @@ class Recorder2 : BaseActivity() {
             mCameraDevice = null
             finish()
         }
-
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -129,9 +133,8 @@ class Recorder2 : BaseActivity() {
 
     override fun untouched() {
         super.untouched()
-        mediaRecorderManager.stopRecord()
         startPreview()
-        isRecording = false
+        recordComplete()
     }
 
     override fun initRunnable(): Runnable {
@@ -139,9 +142,17 @@ class Recorder2 : BaseActivity() {
         val sec = duration / 10.0
         recorder_progress.setProgress((sec / MAX_DURATION * 100).toInt())
         if (sec > MAX_DURATION) {
-            
+            recordComplete()
         }
         return super.initRunnable()
+    }
+
+    private fun recordComplete() {
+        if (isRecording) {
+            isRecording = false
+            mediaRecorderManager.stopRecord()
+
+        }
     }
 
     private fun startBackgroundThread() {
@@ -253,19 +264,7 @@ class Recorder2 : BaseActivity() {
         builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
     }
 
-    /**
-     * Configures the necessary [android.graphics.Matrix] transformation to `recorder_tv`.
-     * This method should not to be called until the camera preview size is determined in
-     * openCamera, or until the size of `recorder_tv` is fixed.
-
-     * @param viewWidth  The width of `recorder_tv`
-     * *
-     * @param viewHeight The height of `recorder_tv`
-     */
     private fun configureTransform(viewWidth: Int, viewHeight: Int) {
-        if (null == recorder_tv) {
-            return
-        }
         val rotation = windowManager.defaultDisplay.rotation
         val matrix = Matrix()
         val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
