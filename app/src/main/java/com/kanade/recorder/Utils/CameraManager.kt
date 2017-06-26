@@ -13,7 +13,6 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private lateinit var holder: SurfaceHolder
     private lateinit var params: Camera.Parameters
     private lateinit var camera: Camera
-    private val sizeComparator by lazy { CameraSizeComparator() }
 
     private var isRelease = true
     private var isPreview = false
@@ -80,8 +79,8 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      */
      override @Synchronized fun handleFocusMetering(x: Float, y: Float) {
         if (!isPreview || isRelease) return
-        val focusRect = calculateTapArea(x, y, 1f)
-        val meteringRect = calculateTapArea(x, y, 1.5f)
+        val focusRect = calculateTapArea(x, y, svWidth, svHeight, 1f)
+        val meteringRect = calculateTapArea(x, y, svWidth, svHeight, 1.5f)
 
         params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
 

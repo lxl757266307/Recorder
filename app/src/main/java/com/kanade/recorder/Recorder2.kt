@@ -15,7 +15,6 @@ import android.os.HandlerThread
 import android.util.DisplayMetrics
 import android.view.*
 import android.widget.Toast
-import com.kanade.recorder.R.id.recorder_tv
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.RecorderSize
 import com.kanade.recorder.Utils.getBestSize

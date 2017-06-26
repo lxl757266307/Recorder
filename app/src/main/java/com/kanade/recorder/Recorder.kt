@@ -6,6 +6,7 @@ import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_recorder.*
 import com.kanade.recorder._interface.IRecorderContract
 import android.util.DisplayMetrics
+import android.widget.Toast
 
 class Recorder : BaseActivity(), IRecorderContract.View {
     private val TAG = "Recorder"
@@ -117,5 +118,5 @@ class Recorder : BaseActivity(), IRecorderContract.View {
         return super.initRunnable()
     }
 
-    override fun getContext(): Context = getContext()
+    override fun Context(): Context = this
 }
