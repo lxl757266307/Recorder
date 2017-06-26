@@ -1,25 +1,43 @@
 package com.kanade.recorder.Utils
 
+import android.annotation.TargetApi
+import android.media.CamcorderProfile
+import android.media.MediaRecorder
+import android.os.Build
+import android.util.Log
+import android.view.Surface
+
 class MediaRecorderManager {
     private val TAG = "MediaRecorderManager"
+    private var isPrepare = false
     private var isRecording = false
-    private var camera: android.hardware.Camera? = null
     private var recorder: android.media.MediaRecorder? = null
 
-    fun record(camera: android.hardware.Camera, profile: android.media.CamcorderProfile, filePath: String) {
-        this.camera = camera
+    private var listener: MediaStateListener? = null
+
+    fun setListener(listener: MediaStateListener) {
+        this.listener = listener
+    }
+
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    fun getSurface(): Surface? {
+        return recorder?.surface
+    }
+
+    fun startRecord() {
         if (isRecording) {
             try {
                 recorder?.stop()  // stop the startRecord
             } catch (e: RuntimeException) {
                 // RuntimeException is thrown when stop() is called immediately after start().
                 // In this case the output file is not properly constructed ans should be deleted.
-                android.util.Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
+                Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
             }
 
             releaseMediaRecorder() // release the MediaRecorder object
             isRecording = false
-        } else if (prepareRecord(camera, profile, filePath)) {
+            isPrepare = false
+        } else if (isPrepare) {
             try {
                 recorder?.start()
                 isRecording = true
@@ -33,6 +51,7 @@ class MediaRecorderManager {
     fun stopRecord() {
         if (isRecording) {
             isRecording = false
+            isPrepare = false
             try {
                 recorder?.stop()
             } catch (r: RuntimeException) {
@@ -49,26 +68,30 @@ class MediaRecorderManager {
             recorder.reset()
             // release the recorder object
             recorder.release()
+            listener?.release(recorder)
         }
-        // Lock camera for later use i.e taking it back from MediaRecorder.
-        // MediaRecorder doesn't need it anymore and we will release it if the activity pauses.
-        camera?.lock()
-        camera = null
         recorder = null
     }
 
-    private fun prepareRecord(camera: android.hardware.Camera, profile: android.media.CamcorderProfile, filePath: String): Boolean {
+    fun prepareRecord(profile: CamcorderProfile, filePath: String): Boolean {
         try {
-            recorder = android.media.MediaRecorder()
+            recorder = MediaRecorder()
             recorder?.let { recorder ->
-                camera.unlock()
-                recorder.setCamera(camera)
-                recorder.setAudioSource(android.media.MediaRecorder.AudioSource.MIC)
-                recorder.setVideoSource(android.media.MediaRecorder.VideoSource.CAMERA)
+                listener?.prepare(recorder)
+                recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
+                } else {
+                    recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
+                }
+                recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 recorder.setOrientationHint(90)
                 recorder.setProfile(profile)
                 recorder.setOutputFile(filePath)
                 recorder.prepare()
+                isPrepare = true
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -77,5 +100,11 @@ class MediaRecorderManager {
             return false
         }
         return true
+    }
+
+    interface MediaStateListener {
+        fun prepare(recorder: MediaRecorder)
+
+        fun release(recorder: MediaRecorder)
     }
 }

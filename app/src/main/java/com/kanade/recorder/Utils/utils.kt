@@ -3,6 +3,7 @@ package com.kanade.recorder.Utils
 import android.content.ContentValues.TAG
 import android.graphics.Rect
 import android.hardware.Camera
+import android.media.CamcorderProfile
 import android.util.Log
 import java.util.*
 import java.util.concurrent.locks.Lock
@@ -61,6 +62,19 @@ fun getBestSize(list: List<RecorderSize>, th: Int, rate: Float): RecorderSize {
     } else {
         return list[i]
     }
+}
+
+fun initProfile(width: Int, height: Int): CamcorderProfile {
+    val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH)
+    // 这里是重点，分辨率和比特率
+    // 分辨率越大视频大小越大，比特率越大视频越清晰
+    // 清晰度由比特率决定，视频尺寸和像素量由分辨率决定
+    // 比特率越高越清晰（前提是分辨率保持不变），分辨率越大视频尺寸越大。
+    profile.videoFrameWidth = width
+    profile.videoFrameHeight = height
+    profile.videoBitRate = width * height
+    profile.audioBitRate = 96000
+    return profile
 }
 
 private fun getBestSize(list: List<RecorderSize>, rate: Float): RecorderSize {

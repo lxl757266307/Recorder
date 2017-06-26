@@ -1,25 +1,31 @@
 package com.kanade.recorder
 
-import android.content.Context
+import android.hardware.Camera
 import android.media.CamcorderProfile
+import android.media.MediaRecorder
 import android.view.SurfaceHolder
 import com.kanade.recorder.Utils.CameraManager
 import com.kanade.recorder.Utils.MediaRecorderManager
+import com.kanade.recorder.Utils.initProfile
 import com.kanade.recorder._interface.ICameraManager
 import com.kanade.recorder._interface.IRecorderContract
 import java.io.File
 
-class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
+class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback, MediaRecorderManager.MediaStateListener {
     private val TAG = "CameraPresenter"
     private val MAX_DURATION = 10
     private var duration = 0f
     private var isRecording = false
+    private var camera: Camera? = null
     private lateinit var filePath: String
     private lateinit var view: IRecorderContract.View
     private lateinit var cameraManager: ICameraManager
     private lateinit var mediaRecorderManager: MediaRecorderManager
 
-    private val profile: CamcorderProfile by lazy { initProfile() }
+    private val profile: CamcorderProfile by lazy {
+        val size = cameraManager.getVideoSize()
+        initProfile(size.first, size.second)
+    }
 
     override fun attach(v: IRecorderContract.View, filePath: String) {
         this.view = v
@@ -35,6 +41,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     override fun init(holder: SurfaceHolder, width: Int, height: Int) {
         cameraManager = CameraManager()
         cameraManager.init(holder, width, height)
+        mediaRecorderManager.setListener(this)
         holder.addCallback(this)
     }
 
@@ -57,8 +64,9 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     override fun staretRecord() {
         duration = 0f
         isRecording = true
-        val camera = (cameraManager as CameraManager).getCamera()
-        mediaRecorderManager.record(camera, profile, filePath)
+        if (mediaRecorderManager.prepareRecord(profile, filePath)) {
+            mediaRecorderManager.startRecord()
+        }
     }
 
     override fun recording() {
@@ -84,6 +92,19 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
         }
     }
 
+    override fun prepare(recorder: MediaRecorder) {
+        camera = (cameraManager as CameraManager).getCamera()
+        camera?.let { camera ->
+            camera.unlock()
+            recorder.setCamera(camera)
+        }
+    }
+
+    override fun release(recorder: MediaRecorder) {
+        camera?.lock()
+        camera = null
+    }
+
     override fun setResult() {
         val result = RecorderResult(filePath, (duration / 10.0).toInt())
         view.setResult(result)
@@ -102,20 +123,4 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback {
     private fun deleteFile() {
         File(filePath).run { if (exists()) delete() }
     }
-
-    private fun initProfile(): CamcorderProfile {
-        val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH)
-        val size = cameraManager.getVideoSize()
-        // 这里是重点，分辨率和比特率
-        // 分辨率越大视频大小越大，比特率越大视频越清晰
-        // 清晰度由比特率决定，视频尺寸和像素量由分辨率决定
-        // 比特率越高越清晰（前提是分辨率保持不变），分辨率越大视频尺寸越大。
-        profile.videoFrameWidth = size.first
-        profile.videoFrameHeight = size.second
-        profile.videoBitRate = size.first * size.second
-        profile.audioBitRate = 96000
-        return profile
-    }
-
-    override fun getContext(): Context = view.Context()
 }
