@@ -15,6 +15,7 @@ import android.os.HandlerThread
 import android.util.DisplayMetrics
 import android.view.*
 import android.widget.Toast
+import com.kanade.recorder.R.id.recorder_tv
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.RecorderSize
 import com.kanade.recorder.Utils.getBestSize
@@ -46,7 +47,6 @@ class Recorder2 : BaseActivity() {
     }
 
     private lateinit var filePath: String
-    private var isRecording = false
     private var duration = 0f
 
     private var mCameraDevice: CameraDevice? = null
@@ -110,10 +110,10 @@ class Recorder2 : BaseActivity() {
     override fun onResume() {
         super.onResume()
         startBackgroundThread()
-        if (recorder_tv.isAvailable) {
-            openCamera(recorder_tv.width, recorder_tv.height)
+        if (recorder_vv.isAvailable) {
+            openCamera(recorder_vv.width, recorder_vv.height)
         } else {
-            recorder_tv.surfaceTextureListener = mSurfaceTextureListener
+            recorder_vv.surfaceTextureListener = mSurfaceTextureListener
         }
     }
 
@@ -125,7 +125,7 @@ class Recorder2 : BaseActivity() {
 
     override fun touched() {
         super.touched()
-        if (!recorder_tv.isAvailable) {
+        if (!recorder_vv.isAttachedToWindow) {
             return
         }
         mCameraDevice?.let { initCameraDevice(it) }
@@ -189,7 +189,7 @@ class Recorder2 : BaseActivity() {
             val screenProp = height / width.toFloat()
             optimalSize = getBestSize(map, 1000, screenProp)
 
-            recorder_tv.setAspectRatio(optimalSize.height, optimalSize.width)
+            recorder_vv.setAspectRatio(optimalSize.height, optimalSize.width)
             configureTransform(width, height)
             manager.openCamera(cameraId, mStateCallback, null)
         } catch (e: CameraAccessException) {

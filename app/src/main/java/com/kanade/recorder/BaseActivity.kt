@@ -73,6 +73,12 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
         recorder_vv.start()
     }
 
+    override fun onPrepared(mp: MediaPlayer) {
+        isPlaying = true
+        mp.isLooping = true
+        mp.start()
+    }
+
     protected fun stopPlay() {
         if (!isPlaying) return
         isPlaying = false

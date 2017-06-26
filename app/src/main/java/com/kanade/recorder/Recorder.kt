@@ -2,7 +2,6 @@ package com.kanade.recorder
 
 import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
 import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_recorder.*
 import com.kanade.recorder._interface.IRecorderContract
@@ -101,11 +100,6 @@ class Recorder : BaseActivity(), IRecorderContract.View {
 
     override fun stopVideo() {
         stopPlay()
-    }
-
-    override fun onPrepared(mp: MediaPlayer) {
-        mp.isLooping = true
-        mp.start()
     }
 
     override fun touched() {
