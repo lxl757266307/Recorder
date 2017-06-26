@@ -1,5 +1,6 @@
 package com.kanade.recorder
 
+import android.content.Context
 import android.hardware.Camera
 import android.media.CamcorderProfile
 import android.media.MediaRecorder
@@ -123,4 +124,6 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback, M
     private fun deleteFile() {
         File(filePath).run { if (exists()) delete() }
     }
+
+    override fun getContext(): Context = view.Context()
 }
