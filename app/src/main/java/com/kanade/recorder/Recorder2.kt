@@ -88,17 +88,7 @@ class Recorder2 : Recorder() {
     }
 
     override fun recordComplete() {
-        mediaRecorderManager.stopRecord()
-        val sec = duration / 10.0
-        if (sec < 1) {
-            Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
-        } else {
-            closeCamera()
-            recorder_progress.recordComplete()
-            // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
-            startShowCompleteAni()
-            playVideo(filePath)
-        }
+        closeCamera()
     }
 
     override fun startPreview() {

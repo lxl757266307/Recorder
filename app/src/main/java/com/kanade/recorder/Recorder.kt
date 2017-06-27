@@ -114,7 +114,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
         recorder_progress.setProgress(0)
         handler.removeCallbacks(runnable)
-        recordComplete()
+        complete()
     }
 
     /**
@@ -128,7 +128,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         val progress = (sec / MAX_DURATION * 100).toInt()
         recorder_progress.setProgress(progress)
         if (sec > MAX_DURATION) {
-            recordComplete()
+            complete()
             return@Runnable
         }
         handler.postDelayed(runnable, 100)
@@ -158,6 +158,23 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         isPlaying = true
         mp.isLooping = true
         mp.start()
+    }
+
+    private fun complete() {
+        if (isRecording) {
+            mediaRecorderManager.stopRecord()
+            isRecording = false
+            val sec = duration / 10.0
+            if (sec < 1) {
+                Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
+            } else {
+                recordComplete()
+                recorder_progress.recordComplete()
+                // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
+                startShowCompleteAni()
+                playVideo(filePath)
+            }
+        }
     }
 
     /**
