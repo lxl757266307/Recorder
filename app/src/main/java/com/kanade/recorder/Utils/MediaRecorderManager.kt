@@ -11,7 +11,7 @@ class MediaRecorderManager {
     private val TAG = "MediaRecorderManager"
     private var isPrepare = false
     private var isRecording = false
-    private var recorder: android.media.MediaRecorder? = null
+    private var recorder: MediaRecorder? = null
 
     private var listener: MediaStateListener? = null
 
@@ -26,24 +26,14 @@ class MediaRecorderManager {
 
     fun startRecord() {
         if (isRecording) {
-            try {
-                recorder?.stop()  // stop the startRecord
-            } catch (e: RuntimeException) {
-                // RuntimeException is thrown when stop() is called immediately after start().
-                // In this case the output file is not properly constructed ans should be deleted.
-                Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
-            }
-
-            releaseMediaRecorder() // release the MediaRecorder object
-            isRecording = false
-            isPrepare = false
+            stopRecord()
         } else if (isPrepare) {
             try {
                 recorder?.start()
                 isRecording = true
             } catch (r: RuntimeException) {
                 releaseMediaRecorder()
-                android.util.Log.d(TAG, "RuntimeException: start() is called immediately after stop()")
+                Log.d(TAG, "RuntimeException: start() is called immediately after stop()")
             }
         }
     }
@@ -55,7 +45,7 @@ class MediaRecorderManager {
             try {
                 recorder?.stop()
             } catch (r: RuntimeException) {
-                android.util.Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
+                Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
             } finally {
                 releaseMediaRecorder()
             }
@@ -64,9 +54,7 @@ class MediaRecorderManager {
 
     fun releaseMediaRecorder() {
         recorder?.let { recorder ->
-            // clear recorder configuration
             recorder.reset()
-            // release the recorder object
             recorder.release()
             listener?.release(recorder)
         }
@@ -84,9 +72,9 @@ class MediaRecorderManager {
                 } else {
                     recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
                 }
-                recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+//                recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+//                recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+//                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 recorder.setOrientationHint(90)
                 recorder.setProfile(profile)
                 recorder.setOutputFile(filePath)
@@ -95,7 +83,7 @@ class MediaRecorderManager {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            android.util.Log.d(TAG, "Exception prepareRecord: ")
+            Log.d(TAG, "Exception prepareRecord: ")
             releaseMediaRecorder()
             return false
         }

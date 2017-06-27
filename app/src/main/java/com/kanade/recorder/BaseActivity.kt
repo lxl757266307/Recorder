@@ -63,8 +63,10 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
         handler.removeCallbacks(runnable)
     }
 
-    protected open fun initRunnable() = Runnable {
-        handler.postDelayed(runnable, 100)
+    protected fun initRunnable() = Runnable {
+        if (recording()) {
+            handler.postDelayed(runnable, 100)
+        }
     }
 
     protected fun play(filePath: String) {
@@ -89,11 +91,13 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
         startHideCompleteView()
     }
 
-    open fun positiveButton() {}
+    open fun recording(): Boolean = true
 
-    open fun zoom(zoom: Int) {}
+    open fun positiveButton() = Unit
 
-    open fun zoom(isZoom: Boolean) {}
+    open fun zoom(zoom: Int) = Unit
+
+    open fun zoom(isZoom: Boolean) = Unit
 
     open fun focus(x: Float, y: Float) {
 //        Log.d(TAG, "focus x: $x, focus y: $y")
@@ -160,7 +164,7 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
 
     private fun initFocusViewAni(): AnimatorSet =
             AnimatorSet {
-                listener = object : AnimatorListenerAdapter() {
+                setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationStart(animation: Animator?) {
                         super.onAnimationStart(animation)
                         recorder_focus.alpha = 1f
@@ -171,10 +175,10 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
                         super.onAnimationEnd(animation)
                         recorder_focus.visibility = View.GONE
                     }
-                }
+                })
                 invoke {
                     play(ObjectAnimator.ofFloat(recorder_focus, "scaleX", 1.5f, 1f).apply { duration = 500 })
-                            .with(ObjectAnimator.ofFloat(recorder_focus, "scaleXY", 1.5f, 1f).apply { duration = 500 })
+                            .with(ObjectAnimator.ofFloat(recorder_focus, "scaleY", 1.5f, 1f).apply { duration = 500 })
                             .before(ObjectAnimator.ofFloat(recorder_focus, "alpha", 1f, 0f).apply { duration = 750 })
                 }
             }
@@ -182,7 +186,7 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
     private fun initShowCompleteViewAni(): AnimatorSet =
             AnimatorSet {
                 duration = 350
-                listener = object : AnimatorListenerAdapter() {
+                setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationStart(animation: Animator?) {
                         super.onAnimationStart(animation)
                         recorder_back.visibility = View.GONE
@@ -194,7 +198,7 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
                         super.onAnimationEnd(animation)
                         recorder_progress.visibility = View.GONE
                     }
-                }
+                })
                 scaleAnis(recorder_cancelbtn, 0f, 1f)
                 scaleAnis(recorder_positivebtn, 0f, 1f)
                 scaleAnis(recorder_progress, 1f, 0f)
@@ -203,7 +207,7 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
     private fun initHideCompleteViewAni(): AnimatorSet =
             AnimatorSet {
                 duration = 350
-                listener = object : AnimatorListenerAdapter() {
+                setListener(object : AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: Animator?) {
                         super.onAnimationEnd(animation)
                         recorder_progress.visibility = View.VISIBLE
@@ -211,7 +215,7 @@ abstract class BaseActivity : AppCompatActivity(), VideoProgressBtn.AniEndListen
                         recorder_cancelbtn.visibility = View.GONE
                         recorder_positivebtn.visibility = View.GONE
                     }
-                }
+                })
                 scaleAnis(recorder_cancelbtn, 1f, 0f)
                 scaleAnis(recorder_positivebtn, 1f, 0f)
                 scaleAnis(recorder_progress, 0f, 1f)

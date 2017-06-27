@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.Toast
 import com.kanade.recorder.Recorder
+import com.kanade.recorder.Recorder2
 import kotlinx.android.synthetic.main.activity_main.*
 import permissions.dispatcher.*
 import java.io.File
@@ -38,7 +39,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         val file = "video_" + System.currentTimeMillis() + ".mp4"
-        val intent = Recorder.newIntent(this, dir + File.separator + file)
+        val intent = Recorder2.newIntent(this, dir + File.separator + file)
         startActivityForResult(intent, RESULT)
     }
 

@@ -4,8 +4,6 @@ import android.annotation.TargetApi
 import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
-import android.graphics.Matrix
-import android.graphics.RectF
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
 import android.os.Build
@@ -19,15 +17,14 @@ import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.RecorderSize
 import com.kanade.recorder.Utils.getBestSize
 import com.kanade.recorder.Utils.initProfile
-import kotlinx.android.synthetic.main.activity_recorder2.*
-import permissions.dispatcher.*
+import kotlinx.android.synthetic.main.activity_recorder.*
+import java.io.File
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-@RuntimePermissions
 class Recorder2 : BaseActivity() {
     private val TAG = "Recorder2"
     private val MAX_DURATION = 10
@@ -45,19 +42,13 @@ class Recorder2 : BaseActivity() {
                 intent.getParcelableExtra(RESULT_FILEPATH)
     }
 
+    // 录像文件保存路径
     private lateinit var filePath: String
     private var duration = 0f
 
-    private var mCameraDevice: CameraDevice? = null
+    private lateinit var mCameraDevice: CameraDevice
     private var mPreviewBuilder: CaptureRequest.Builder? = null
     private var mPreviewSession: CameraCaptureSession? = null
-
-    private val mSurfaceTextureListener = object : TextureView.SurfaceTextureListener {
-        override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) = openCamera(width, height)
-        override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) = configureTransform(width, height)
-        override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean = true
-        override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) = Unit
-    }
 
     private val initSize: RecorderSize by lazy {
         val dm = DisplayMetrics()
@@ -70,9 +61,6 @@ class Recorder2 : BaseActivity() {
     private lateinit var mBackgroundThread: HandlerThread
     private lateinit var mBackgroundHandler: Handler
 
-    /**
-     * A [Semaphore] to prevent the app from exiting before closing the camera.
-     */
     private val mCameraOpenCloseLock = Semaphore(1)
 
     private val mStateCallback = object : CameraDevice.StateCallback() {
@@ -80,40 +68,34 @@ class Recorder2 : BaseActivity() {
             mCameraDevice = cameraDevice
             startPreview()
             mCameraOpenCloseLock.release()
-            configureTransform(initSize.width, initSize.height)
         }
 
         override fun onDisconnected(cameraDevice: CameraDevice) {
             mCameraOpenCloseLock.release()
             cameraDevice.close()
-            mCameraDevice = null
         }
 
         override fun onError(cameraDevice: CameraDevice, error: Int) {
             mCameraOpenCloseLock.release()
             cameraDevice.close()
-            mCameraDevice = null
             finish()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_recorder2)
+        setContentView(R.layout.activity_recorder)
+        startBackgroundThread()
         filePath = intent.getStringExtra(ARG_FILEPATH)
         mediaRecorderManager = MediaRecorderManager()
 
         BaseActivityPermissionsDispatcher.checkPermissionWithCheck(this)
     }
 
-    override fun onResume() {
-        super.onResume()
-        startBackgroundThread()
-        if (recorder_vv.isAvailable) {
-            openCamera(recorder_vv.width, recorder_vv.height)
-        } else {
-            recorder_vv.surfaceTextureListener = mSurfaceTextureListener
-        }
+    override fun checkPermission() {
+        super.checkPermission()
+        val holder = recorder_vv.holder
+        openCamera(holder, initSize.width, initSize.height)
     }
 
     override fun onStop() {
@@ -124,34 +106,40 @@ class Recorder2 : BaseActivity() {
 
     override fun touched() {
         super.touched()
-        if (!recorder_vv.isAttachedToWindow) {
-            return
-        }
-        mCameraDevice?.let { initCameraDevice(it) }
+        initCameraDevice(mCameraDevice)
     }
 
     override fun untouched() {
         super.untouched()
-        startPreview()
         recordComplete()
     }
 
-    override fun initRunnable(): Runnable {
+    override fun recording(): Boolean {
         duration++
         val sec = duration / 10.0
         recorder_progress.setProgress((sec / MAX_DURATION * 100).toInt())
         if (sec > MAX_DURATION) {
             recordComplete()
+            return false
         }
-        return super.initRunnable()
+        return true
     }
 
     private fun recordComplete() {
         if (isRecording) {
             isRecording = false
             mediaRecorderManager.stopRecord()
-
+            closeCamera()
+            startShowCompleteAni()
+            play(filePath)
         }
+    }
+
+    override fun cancelButton() {
+        super.cancelButton()
+        File(filePath).run { delete() }
+        val holder = recorder_vv.holder
+        openCamera(holder, initSize.width, initSize.height)
     }
 
     private fun startBackgroundThread() {
@@ -169,27 +157,22 @@ class Recorder2 : BaseActivity() {
         }
     }
 
-    /**
-     * Tries to open a [CameraDevice]. The result is listened by `mStateCallback`.
-     */
-    private fun openCamera(width: Int, height: Int) {
-        val manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+    private fun openCamera(holder: SurfaceHolder, width: Int, height: Int) {
         try {
             if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
                 throw RuntimeException("Time out waiting to lock camera opening.")
             }
-            val cameraId = manager.cameraIdList[0]
 
+            val manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            val cameraId = manager.cameraIdList[0]
             val characteristics = manager.getCameraCharacteristics(cameraId)
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
                     .getOutputSizes(SurfaceTexture::class.java)
                     .map { RecorderSize(it.height, it.width) }
-
             val screenProp = height / width.toFloat()
             optimalSize = getBestSize(map, 1000, screenProp)
 
-            recorder_vv.setAspectRatio(optimalSize.height, optimalSize.width)
-            configureTransform(width, height)
+            holder.setFixedSize(optimalSize.width, optimalSize.height)
             manager.openCamera(cameraId, mStateCallback, null)
         } catch (e: CameraAccessException) {
             Toast.makeText(this, "Cannot access the camera.", Toast.LENGTH_SHORT).show()
@@ -205,8 +188,7 @@ class Recorder2 : BaseActivity() {
         try {
             mCameraOpenCloseLock.acquire()
             closePreviewSession()
-            mCameraDevice?.close()
-            mCameraDevice = null
+            mCameraDevice.close()
             mediaRecorderManager.releaseMediaRecorder()
         } catch (e: InterruptedException) {
             throw RuntimeException("Interrupted while trying to lock camera closing.")
@@ -216,42 +198,33 @@ class Recorder2 : BaseActivity() {
     }
 
     private fun startPreview() {
-        if (!recorder_tv.isAvailable) {
-            return
-        }
+        closePreviewSession()
         try {
-            closePreviewSession()
-            val texture = recorder_tv.surfaceTexture
-            texture.setDefaultBufferSize(optimalSize.width, optimalSize.height)
-            mPreviewBuilder = mCameraDevice?.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+            mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
 
-            val previewSurface = Surface(texture)
-            mPreviewBuilder?.addTarget(previewSurface)
+            val surface = recorder_vv.holder.surface
+            mPreviewBuilder?.addTarget(surface)
 
-            mCameraDevice?.createCaptureSession(listOf(previewSurface),
+            mCameraDevice.createCaptureSession(listOf(surface),
                     object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             mPreviewSession = session
                             updatePreview()
                         }
 
-                        override fun onConfigureFailed(session: CameraCaptureSession) { Toast.makeText(this@Recorder2, "Failed", Toast.LENGTH_SHORT).show() }
+                        override fun onConfigureFailed(session: CameraCaptureSession) {
+                            Toast.makeText(this@Recorder2, "Failed", Toast.LENGTH_SHORT).show()
+                        }
                     }, mBackgroundHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
         }
     }
 
-    /**
-     * Update the camera preview. [.startPreview] needs to be called in advance.
-     */
     private fun updatePreview() {
-        if (null == mCameraDevice) {
-            return
-        }
         mPreviewBuilder?.let { builder ->
             try {
-                setUpCaptureRequestBuilder(builder)
+                builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
                 mPreviewSession?.setRepeatingRequest(builder.build(), null, mBackgroundHandler)
             } catch (e: CameraAccessException) {
                 e.printStackTrace()
@@ -259,52 +232,31 @@ class Recorder2 : BaseActivity() {
         }
     }
 
-    private fun setUpCaptureRequestBuilder(builder: CaptureRequest.Builder) {
-        builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
-    }
-
-    private fun configureTransform(viewWidth: Int, viewHeight: Int) {
-        val rotation = windowManager.defaultDisplay.rotation
-        val matrix = Matrix()
-        val viewRect = RectF(0f, 0f, viewWidth.toFloat(), viewHeight.toFloat())
-        val bufferRect = RectF(0f, 0f, optimalSize.height.toFloat(), optimalSize.width.toFloat())
-        val centerX = viewRect.centerX()
-        val centerY = viewRect.centerY()
-        if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
-            bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
-            matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
-            val scale = Math.max(viewHeight.toFloat() / optimalSize.height,
-                    viewWidth.toFloat() / optimalSize.width)
-            matrix.postScale(scale, scale, centerX, centerY)
-            matrix.postRotate((90 * (rotation - 2)).toFloat(), centerX, centerY)
-        }
-        recorder_tv.setTransform(matrix)
-    }
-
     private fun initCameraDevice(device: CameraDevice) {
+        closePreviewSession()
         try {
-            closePreviewSession()
-            mediaRecorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filePath)
-            val texture = recorder_tv.surfaceTexture
-            texture.setDefaultBufferSize(optimalSize.width, optimalSize.height)
             mPreviewBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
+            mediaRecorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filePath)
+            val surface = recorder_vv.holder.surface
 
             val surfaces = ArrayList<Surface>()
+            surfaces.add(surface)
+            mPreviewBuilder?.addTarget(surface)
 
-            val previewSurface = Surface(texture)
-            surfaces.add(previewSurface)
-            mPreviewBuilder?.addTarget(previewSurface)
-
-            mediaRecorderManager.getSurface()?.let { surface ->
-                surfaces.add(surface)
-                mPreviewBuilder?.addTarget(surface)
+            mediaRecorderManager.getSurface()?.let {
+                surfaces.add(it)
+                mPreviewBuilder?.addTarget(it)
                 runOnUiThread { mediaRecorderManager.startRecord() }
             }
 
             // Start a capture session
             // Once the session starts, we can update the UI and start recording
-            isRecording = true
             device.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
+                override fun onReady(session: CameraCaptureSession?) {
+                    super.onReady(session)
+                    isRecording = true
+                }
+
                 override fun onConfigured(cameraCaptureSession: CameraCaptureSession) {
                     mPreviewSession = cameraCaptureSession
                     updatePreview()

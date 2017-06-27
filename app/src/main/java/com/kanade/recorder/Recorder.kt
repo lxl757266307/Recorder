@@ -113,9 +113,9 @@ class Recorder : BaseActivity(), IRecorderContract.View {
         presenter.recordComplete()
     }
 
-    override fun initRunnable(): Runnable {
+    override fun recording(): Boolean {
         presenter.recording()
-        return super.initRunnable()
+        return true
     }
 
     override fun Context(): Context = this

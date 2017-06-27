@@ -12,10 +12,9 @@ class AnimatorWrapper {
             field = value
         }
 
-    var listener: Animator.AnimatorListener? = null
-        set(value) {
-            field = value
-        }
+    fun setListener(listener: Animator.AnimatorListener) {
+        ani.addListener(listener)
+    }
 
     fun invoke(block: AnimatorSet.() -> Unit) {
         ani.block()

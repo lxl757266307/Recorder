@@ -24,5 +24,8 @@
         <activity android:name="com.kanade.recorder.Recorder"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
+        <activity android:name="com.kanade.recorder.Recorder2"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
     </application>
 </manifest>

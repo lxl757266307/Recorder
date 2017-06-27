@@ -45,23 +45,27 @@
 
     <ImageView
         android:id="@+id/recorder_cancelbtn"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="@dimen/btn_size"
+        android:layout_height="@dimen/btn_size"
         android:src="@drawable/recorder_cancel_btn"
         android:padding="@dimen/btn_padding"
         android:background="@drawable/recorder_btn_bg"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
+        android:layout_marginBottom="50dp"
+        android:layout_marginLeft="45dp"
         android:visibility="gone" />
 
     <ImageView
         android:id="@+id/recorder_positivebtn"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="@dimen/btn_size"
+        android:layout_height="@dimen/btn_size"
         android:src="@drawable/recorder_positive_btn"
         android:padding="@dimen/btn_padding"
         android:background="@drawable/recorder_btn_bg"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintRight_toRightOf="parent"
+        android:layout_marginBottom="50dp"
+        android:layout_marginRight="45dp"
         android:visibility="gone"/>
 </android.support.constraint.ConstraintLayout>
