@@ -8,6 +8,8 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
+import android.media.MediaRecorder
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AlertDialog
@@ -25,8 +27,8 @@ import permissions.dispatcher.*
 import java.io.File
 
 @RuntimePermissions
-abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, View.OnClickListener, MediaPlayer.OnPreparedListener, MediaRecorderManager.MediaStateListener {
-
+abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, View.OnClickListener, MediaPlayer.OnPreparedListener {
+    protected val TAG = "Recorder"
     protected lateinit var handler: Handler
     // 录像文件保存位置
     protected lateinit var filePath: String
@@ -52,10 +54,12 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         private const val ARG_FILEPATH = "arg_filepath"
 
         @JvmStatic
-        fun newIntent(ctx: Context, filePath: String): Intent {
-            return Intent(ctx, Recorder1::class.java)
-                    .putExtra(ARG_FILEPATH, filePath)
-        }
+        fun newIntent(ctx: Context, filePath: String): Intent =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    Intent(ctx, Recorder2::class.java).putExtra(ARG_FILEPATH, filePath)
+                } else {
+                    Intent(ctx, Recorder1::class.java).putExtra(ARG_FILEPATH, filePath)
+                }
 
         @JvmStatic
         fun getResult(intent: Intent): RecorderResult =
@@ -68,7 +72,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         filePath = intent.getStringExtra(ARG_FILEPATH)
         mediaRecorderManager = MediaRecorderManager()
 
-        BaseActivityPermissionsDispatcher.checkPermissionWithCheck(this)
+        RecorderPermissionsDispatcher.initRecorderWithCheck(this)
     }
 
     override fun onDestroy() {
@@ -110,18 +114,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
         recorder_progress.setProgress(0)
         handler.removeCallbacks(runnable)
-
-        // 检查录音时长是否超时
-        if (isRecording) {
-            isRecording = false
-            mediaRecorderManager.stopRecord()
-            val sec = duration / 10.0
-            if (sec < 1) {
-                Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
-            } else {
-                recordComplete()
-            }
-        }
+        recordComplete()
     }
 
     /**
@@ -131,8 +124,9 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
      */
     protected fun initRunnable() = Runnable {
         duration++
-        val sec = ((duration / 10.0) / MAX_DURATION * 100).toInt()
-        recorder_progress.setProgress(sec)
+        val sec = duration / 10.0
+        val progress = (sec / MAX_DURATION * 100).toInt()
+        recorder_progress.setProgress(progress)
         if (sec > MAX_DURATION) {
             recordComplete()
             return@Runnable
@@ -167,26 +161,9 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
     }
 
     /**
-     * 停止视频播放，并删除视频文件(为新的视频录制文件腾出位置)
-     *
-     * 并再次启动预览
-     */
-    protected fun cancelButton() {
-        stopVideo()
-        File(filePath).run { if (exists()) delete() }
-        startHideCompleteView()
-        startPreview()
-    }
-
-    /**
      * 注意播放视频前要释放camera
      */
-    open fun recordComplete() {
-        recorder_progress.recordComplete()
-        // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
-        startShowCompleteAni()
-        playVideo(filePath)
-    }
+    open fun recordComplete() = Unit
 
     open fun startPreview() = Unit
 
@@ -197,7 +174,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
     open fun focus(x: Float, y: Float) = Unit
 
     @NeedsPermission(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
-    open fun checkPermission() {
+    open fun initRecorder() {
         handler = Handler()
         // 先让video_record_focus渲染一次，下面要用到其宽高
         startFocusAni()
@@ -210,14 +187,22 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
 
         recorder_progress.setListener(this)
         recorder_progress.setOnTouchListener(progressOnTouched())
-
-        mediaRecorderManager.setListener(this)
     }
 
     override fun onClick(v: View) {
         when (v.id) {
             R.id.recorder_back -> finish()
-            R.id.recorder_cancelbtn -> cancelButton()
+        /**
+         * 停止视频播放，并删除视频文件(为新的视频录制文件腾出位置)
+         *
+         * 并再次启动预览
+         */
+            R.id.recorder_cancelbtn -> {
+                stopVideo()
+                File(filePath).run { if (exists()) delete() }
+                startHideCompleteView()
+                startPreview()
+            }
             R.id.recorder_positivebtn -> {
                 val result = RecorderResult(filePath, (duration / 10.0).toInt())
                 val data = Intent()
@@ -251,7 +236,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        BaseActivityPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults)
+        RecorderPermissionsDispatcher.onRequestPermissionsResult(this, requestCode, grantResults)
     }
 
     override fun onStop() {

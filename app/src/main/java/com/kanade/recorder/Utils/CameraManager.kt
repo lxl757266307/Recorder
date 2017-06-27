@@ -33,7 +33,7 @@ class CameraManager : Camera.AutoFocusCallback {
         init(holder)
     }
 
-    fun connectCamera() {
+    fun startPreview() {
         if (isPreview) return
         try {
             isRelease = false
@@ -57,7 +57,6 @@ class CameraManager : Camera.AutoFocusCallback {
             camera.release()
             isRelease = true
             isPreview = false
-            Log.d(TAG, "camera has release")
         }
     }
 
@@ -78,8 +77,8 @@ class CameraManager : Camera.AutoFocusCallback {
      */
      @Synchronized fun handleFocusMetering(x: Float, y: Float) {
         if (!isPreview || isRelease) return
-        val focusRect = calculateTapArea(x, y, svWidth, svHeight, 1f)
-        val meteringRect = calculateTapArea(x, y, svWidth, svHeight, 1.5f)
+        val focusRect = calculateTapArea(x, y, initWidth, initHeight, 1f)
+        val meteringRect = calculateTapArea(x, y, initWidth, initHeight, 1.5f)
 
         params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
 
@@ -137,7 +136,6 @@ class CameraManager : Camera.AutoFocusCallback {
         try {
             camera.parameters = params
         } catch (e: Exception) {
-            Log.d(TAG, "zoom error")
             e.printStackTrace()
         }
     }

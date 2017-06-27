@@ -3,7 +3,6 @@ package com.kanade.recorder
 import android.annotation.TargetApi
 import android.app.AlertDialog
 import android.content.Context
-import android.content.Intent
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
 import android.os.Build
@@ -13,12 +12,10 @@ import android.os.HandlerThread
 import android.util.DisplayMetrics
 import android.view.*
 import android.widget.Toast
-import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.RecorderSize
 import com.kanade.recorder.Utils.getBestSize
 import com.kanade.recorder.Utils.initProfile
 import kotlinx.android.synthetic.main.activity_recorder.*
-import java.io.File
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.Semaphore
@@ -26,8 +23,6 @@ import java.util.concurrent.TimeUnit
 
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class Recorder2 : Recorder() {
-    private val TAG = "Recorder2"
-
     private lateinit var mCameraDevice: CameraDevice
     private var mPreviewBuilder: CaptureRequest.Builder? = null
     private var mPreviewSession: CameraCaptureSession? = null
@@ -47,7 +42,7 @@ class Recorder2 : Recorder() {
     private val mStateCallback = object : CameraDevice.StateCallback() {
         override fun onOpened(cameraDevice: CameraDevice) {
             mCameraDevice = cameraDevice
-            startPreview()
+            initPreview()
             mCameraOpenCloseLock.release()
         }
 
@@ -65,18 +60,25 @@ class Recorder2 : Recorder() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startBackgroundThread()
+        mBackgroundThread = HandlerThread("CameraBackground")
+        mBackgroundThread.start()
+        mBackgroundHandler = Handler(mBackgroundThread.looper)
     }
 
-    override fun checkPermission() {
-        super.checkPermission()
+    override fun initRecorder() {
+        super.initRecorder()
         val holder = recorder_vv.holder
         openCamera(holder, initSize.width, initSize.height)
     }
 
     override fun onStop() {
         closeCamera()
-        stopBackgroundThread()
+        mBackgroundThread.quitSafely()
+        try {
+            mBackgroundThread.join()
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
         super.onStop()
     }
 
@@ -85,41 +87,24 @@ class Recorder2 : Recorder() {
         initCameraDevice(mCameraDevice)
     }
 
-    override fun untouched() {
-        super.untouched()
-        recordComplete()
-    }
-
     override fun recordComplete() {
-        if (isRecording) {
-            isRecording = false
-            mediaRecorderManager.stopRecord()
+        mediaRecorderManager.stopRecord()
+        val sec = duration / 10.0
+        if (sec < 1) {
+            Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
+        } else {
             closeCamera()
+            recorder_progress.recordComplete()
+            // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
             startShowCompleteAni()
             playVideo(filePath)
         }
     }
 
-    override fun cancelButton() {
-        super.cancelButton()
-        File(filePath).run { delete() }
+    override fun startPreview() {
+        super.startPreview()
         val holder = recorder_vv.holder
         openCamera(holder, initSize.width, initSize.height)
-    }
-
-    private fun startBackgroundThread() {
-        mBackgroundThread = HandlerThread("CameraBackground")
-        mBackgroundThread.start()
-        mBackgroundHandler = Handler(mBackgroundThread.looper)
-    }
-
-    private fun stopBackgroundThread() {
-        mBackgroundThread.quitSafely()
-        try {
-            mBackgroundThread.join()
-        } catch (e: InterruptedException) {
-            e.printStackTrace()
-        }
     }
 
     private fun openCamera(holder: SurfaceHolder, width: Int, height: Int) {
@@ -162,7 +147,7 @@ class Recorder2 : Recorder() {
         }
     }
 
-    private fun startPreview() {
+    private fun initPreview() {
         closePreviewSession()
         try {
             mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)

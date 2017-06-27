@@ -40,7 +40,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         val file = "video_" + System.currentTimeMillis() + ".mp4"
-        val intent = Recorder2.newIntent(this, dir + File.separator + file)
+        val intent = Recorder.newIntent(this, dir + File.separator + file)
         startActivityForResult(intent, RESULT)
     }
 

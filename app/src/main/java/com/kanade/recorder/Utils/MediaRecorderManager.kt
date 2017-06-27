@@ -28,12 +28,14 @@ class MediaRecorderManager {
         if (isRecording) {
             stopRecord()
         } else if (isPrepare) {
+            Log.d(TAG, "record started")
             try {
                 recorder?.start()
                 isRecording = true
             } catch (r: RuntimeException) {
                 releaseMediaRecorder()
                 Log.d(TAG, "RuntimeException: start() is called immediately after stop()")
+                r.printStackTrace()
             }
         }
     }
@@ -45,7 +47,9 @@ class MediaRecorderManager {
             try {
                 recorder?.stop()
             } catch (r: RuntimeException) {
+                recorder?.reset()
                 Log.d(TAG, "RuntimeException: stop() is called immediately after start()")
+                r.printStackTrace()
             } finally {
                 releaseMediaRecorder()
             }

@@ -8,16 +8,6 @@ import android.util.Log
 import java.util.*
 import java.util.concurrent.locks.Lock
 
-fun <T> lock(lock: Lock, body: () -> T): T {
-    lock.lock()
-    try {
-        return body()
-    }
-    finally {
-        lock.unlock()
-    }
-}
-
 /**
  * Convert touch position x:y to [Camera.Area] position -1000:-1000 to 1000:1000.
  * 注意这里长边是width

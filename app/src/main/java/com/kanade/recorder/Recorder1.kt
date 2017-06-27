@@ -6,12 +6,12 @@ import android.media.MediaRecorder
 import kotlinx.android.synthetic.main.activity_recorder.*
 import android.util.DisplayMetrics
 import android.view.SurfaceHolder
+import android.widget.Toast
 import com.kanade.recorder.Utils.CameraManager
+import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.initProfile
 
-class Recorder1 : Recorder(), SurfaceHolder.Callback {
-    private val TAG = "Recorder1"
-
+class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.MediaStateListener {
     private var camera: Camera? = null
     private lateinit var cameraManager: CameraManager
 
@@ -20,8 +20,10 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback {
         initProfile(size.first, size.second)
     }
 
-    override fun checkPermission() {
-        super.checkPermission()
+    override fun initRecorder() {
+        super.initRecorder()
+        mediaRecorderManager.setListener(this)
+
         val dm = DisplayMetrics()
         windowManager.defaultDisplay.getMetrics(dm)
 
@@ -32,13 +34,18 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback {
         startPreview()
     }
 
+    override fun onStop() {
+        cameraManager.releaseCamera()
+        mediaRecorderManager.releaseMediaRecorder()
+        super.onStop()
+    }
+
     override fun focus(x: Float, y: Float) {
         cameraManager.handleFocusMetering(x, y)
     }
 
     override fun startPreview() {
-        cameraManager.connectCamera()
-
+        cameraManager.startPreview()
     }
 
     override fun zoom(zoom: Int) {
@@ -57,8 +64,17 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback {
     }
 
     override fun recordComplete() {
-        cameraManager.releaseCamera()
-        super.recordComplete()
+        mediaRecorderManager.stopRecord()
+        val sec = duration / 10.0
+        if (sec < 1) {
+            Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
+        } else {
+            recorder_progress.recordComplete()
+            // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
+            startShowCompleteAni()
+            cameraManager.releaseCamera()
+            playVideo(filePath)
+        }
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
