@@ -25,26 +25,8 @@ import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-class Recorder2 : BaseActivity() {
+class Recorder2 : Recorder() {
     private val TAG = "Recorder2"
-    private val MAX_DURATION = 10
-
-    companion object {
-        private const val RESULT_FILEPATH = "result_filepath"
-        private const val ARG_FILEPATH = "arg_filepath"
-        @JvmStatic
-        fun newIntent(ctx: Context, filePath: String): Intent =
-                Intent(ctx, Recorder2::class.java)
-                        .putExtra(ARG_FILEPATH, filePath)
-
-        @JvmStatic
-        fun getResult(intent: Intent): RecorderResult =
-                intent.getParcelableExtra(RESULT_FILEPATH)
-    }
-
-    // 录像文件保存路径
-    private lateinit var filePath: String
-    private var duration = 0f
 
     private lateinit var mCameraDevice: CameraDevice
     private var mPreviewBuilder: CaptureRequest.Builder? = null
@@ -56,7 +38,6 @@ class Recorder2 : BaseActivity() {
         RecorderSize(dm.heightPixels, dm.widthPixels)
     }
     private lateinit var optimalSize: RecorderSize
-    private lateinit var mediaRecorderManager: MediaRecorderManager
 
     private lateinit var mBackgroundThread: HandlerThread
     private lateinit var mBackgroundHandler: Handler
@@ -84,12 +65,7 @@ class Recorder2 : BaseActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_recorder)
         startBackgroundThread()
-        filePath = intent.getStringExtra(ARG_FILEPATH)
-        mediaRecorderManager = MediaRecorderManager()
-
-        BaseActivityPermissionsDispatcher.checkPermissionWithCheck(this)
     }
 
     override fun checkPermission() {
@@ -114,24 +90,13 @@ class Recorder2 : BaseActivity() {
         recordComplete()
     }
 
-    override fun recording(): Boolean {
-        duration++
-        val sec = duration / 10.0
-        recorder_progress.setProgress((sec / MAX_DURATION * 100).toInt())
-        if (sec > MAX_DURATION) {
-            recordComplete()
-            return false
-        }
-        return true
-    }
-
-    private fun recordComplete() {
+    override fun recordComplete() {
         if (isRecording) {
             isRecording = false
             mediaRecorderManager.stopRecord()
             closeCamera()
             startShowCompleteAni()
-            play(filePath)
+            playVideo(filePath)
         }
     }
 

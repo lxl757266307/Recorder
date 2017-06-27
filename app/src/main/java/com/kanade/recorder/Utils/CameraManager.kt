@@ -3,11 +3,10 @@ package com.kanade.recorder.Utils
 import android.hardware.Camera
 import android.util.Log
 import android.view.SurfaceHolder
-import com.kanade.recorder._interface.ICameraManager
 import java.util.*
 
 @Suppress("DEPRECATION")
-class CameraManager : ICameraManager, Camera.AutoFocusCallback {
+class CameraManager : Camera.AutoFocusCallback {
     private val TAG = "CameraManager"
 
     private lateinit var holder: SurfaceHolder
@@ -21,20 +20,20 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     private var initWidth: Int = 0
     private var initHeight: Int = 0
 
-    override fun init(holder: SurfaceHolder) {
+    fun init(holder: SurfaceHolder) {
         this.holder = holder
         if (isPreview) {
             camera.setPreviewDisplay(holder)
         }
     }
 
-    override fun init(holder: SurfaceHolder, width: Int, height: Int) {
+    fun init(holder: SurfaceHolder, width: Int, height: Int) {
         this.initWidth = width
         this.initHeight = height
         init(holder)
     }
 
-    override fun connectCamera() {
+    fun connectCamera() {
         if (isPreview) return
         try {
             isRelease = false
@@ -52,7 +51,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
 
     fun getCamera(): Camera = camera
 
-    override fun releaseCamera() {
+    fun releaseCamera() {
         if (!isRelease) {
             camera.stopPreview()
             camera.release()
@@ -69,7 +68,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
     /**
      * @return first => width, second => height
      */
-    override fun getVideoSize(): Pair<Int, Int> = Pair(svWidth, svHeight)
+    fun getVideoSize(): Pair<Int, Int> = Pair(svWidth, svHeight)
 
     /**
      * 对焦
@@ -77,7 +76,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      * *
      * @param y
      */
-     override @Synchronized fun handleFocusMetering(x: Float, y: Float) {
+     @Synchronized fun handleFocusMetering(x: Float, y: Float) {
         if (!isPreview || isRelease) return
         val focusRect = calculateTapArea(x, y, svWidth, svHeight, 1f)
         val meteringRect = calculateTapArea(x, y, svWidth, svHeight, 1.5f)
@@ -111,7 +110,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
      * 缩放
      * @param isZoomIn
      */
-    override @Synchronized fun handleZoom(isZoomIn: Boolean) {
+    @Synchronized fun handleZoom(isZoomIn: Boolean) {
         if (!isPreview || isRelease || !params.isZoomSupported) return
         val maxZoom = params.maxZoom
         var zoom = params.zoom
@@ -131,7 +130,7 @@ class CameraManager : ICameraManager, Camera.AutoFocusCallback {
         }
     }
 
-    override @Synchronized fun handleZoom(zoom: Int) {
+    @Synchronized fun handleZoom(zoom: Int) {
         if (!isPreview || isRelease || !params.isZoomSupported) return
         val maxZoom = params.maxZoom
         params.zoom = Math.min(zoom, maxZoom)

@@ -28,7 +28,7 @@ dependencies {
 <uses-feature android:name="android.hardware.camera"/>
 <uses-feature android:name="android.hardware.camera.autofocus"/>
 
-<activity android:name="com.kanade.recorder.Recorder"
+<activity android:name="com.kanade.recorder.Recorder1"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
 ```

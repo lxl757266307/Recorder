@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.View
 import android.widget.Toast
 import com.kanade.recorder.Recorder
+import com.kanade.recorder.Recorder1
 import com.kanade.recorder.Recorder2
 import kotlinx.android.synthetic.main.activity_main.*
 import permissions.dispatcher.*

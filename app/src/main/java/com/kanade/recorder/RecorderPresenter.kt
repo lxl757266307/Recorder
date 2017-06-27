@@ -8,7 +8,6 @@ import android.view.SurfaceHolder
 import com.kanade.recorder.Utils.CameraManager
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.initProfile
-import com.kanade.recorder._interface.ICameraManager
 import com.kanade.recorder._interface.IRecorderContract
 import java.io.File
 
@@ -20,7 +19,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback, M
     private var camera: Camera? = null
     private lateinit var filePath: String
     private lateinit var view: IRecorderContract.View
-    private lateinit var cameraManager: ICameraManager
+    private lateinit var cameraManager: CameraManager
     private lateinit var mediaRecorderManager: MediaRecorderManager
 
     private val profile: CamcorderProfile by lazy {
@@ -94,7 +93,7 @@ class RecorderPresenter : IRecorderContract.Presenter, SurfaceHolder.Callback, M
     }
 
     override fun prepare(recorder: MediaRecorder) {
-        camera = (cameraManager as CameraManager).getCamera()
+        camera = cameraManager.getCamera()
         camera?.let { camera ->
             camera.unlock()
             recorder.setCamera(camera)
