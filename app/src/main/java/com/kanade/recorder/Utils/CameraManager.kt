@@ -75,7 +75,7 @@ class CameraManager : Camera.AutoFocusCallback {
      * *
      * @param y
      */
-     @Synchronized fun handleFocusMetering(x: Float, y: Float) {
+     @Synchronized fun FocusMetering(x: Float, y: Float) {
         if (!isPreview || isRelease) return
         val focusRect = calculateTapArea(x, y, initWidth, initHeight, 1f)
         val meteringRect = calculateTapArea(x, y, initWidth, initHeight, 1.5f)
@@ -109,7 +109,7 @@ class CameraManager : Camera.AutoFocusCallback {
      * 缩放
      * @param isZoomIn
      */
-    @Synchronized fun handleZoom(isZoomIn: Boolean) {
+    @Synchronized fun zoom(isZoomIn: Boolean) {
         if (!isPreview || isRelease || !params.isZoomSupported) return
         val maxZoom = params.maxZoom
         var zoom = params.zoom
@@ -129,7 +129,7 @@ class CameraManager : Camera.AutoFocusCallback {
         }
     }
 
-    @Synchronized fun handleZoom(zoom: Int) {
+    @Synchronized fun zoom(zoom: Int) {
         if (!isPreview || isRelease || !params.isZoomSupported) return
         val maxZoom = params.maxZoom
         params.zoom = Math.min(zoom, maxZoom)

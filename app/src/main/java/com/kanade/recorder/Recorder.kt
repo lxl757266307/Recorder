@@ -8,13 +8,11 @@ import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
 import android.media.MediaPlayer
-import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -114,7 +112,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
         recorder_progress.setProgress(0)
         handler.removeCallbacks(runnable)
-        complete()
+        recordComplete()
     }
 
     /**
@@ -128,7 +126,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         val progress = (sec / MAX_DURATION * 100).toInt()
         recorder_progress.setProgress(progress)
         if (sec > MAX_DURATION) {
-            complete()
+            recordComplete()
             return@Runnable
         }
         handler.postDelayed(runnable, 100)
@@ -137,7 +135,8 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
     /**
      * 播放录制的视频
      *
-     * 在播放之前需要先关闭摄像头的预览画面
+     * 在播放之前需要先关闭摄像头的预览画面和释放camera
+     *
      */
     protected fun playVideo(filePath: String) {
         if (isPlaying) return
@@ -160,7 +159,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         mp.start()
     }
 
-    private fun complete() {
+    private fun recordComplete() {
         if (isRecording) {
             mediaRecorderManager.stopRecord()
             isRecording = false
@@ -168,7 +167,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
             if (sec < 1) {
                 Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
             } else {
-                recordComplete()
+                closeCamera()
                 recorder_progress.recordComplete()
                 // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
                 startShowCompleteAni()
@@ -177,10 +176,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         }
     }
 
-    /**
-     * 注意播放视频前要释放camera
-     */
-    open fun recordComplete() = Unit
+    open fun closeCamera() = Unit
 
     open fun startPreview() = Unit
 

@@ -6,7 +6,6 @@ import android.media.MediaRecorder
 import kotlinx.android.synthetic.main.activity_recorder.*
 import android.util.DisplayMetrics
 import android.view.SurfaceHolder
-import android.widget.Toast
 import com.kanade.recorder.Utils.CameraManager
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.initProfile
@@ -35,13 +34,13 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
     }
 
     override fun onStop() {
-        cameraManager.releaseCamera()
+        closeCamera()
         mediaRecorderManager.releaseMediaRecorder()
         super.onStop()
     }
 
     override fun focus(x: Float, y: Float) {
-        cameraManager.handleFocusMetering(x, y)
+        cameraManager.FocusMetering(x, y)
     }
 
     override fun startPreview() {
@@ -49,11 +48,11 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
     }
 
     override fun zoom(zoom: Int) {
-        cameraManager.handleZoom(zoom)
+        cameraManager.zoom(zoom)
     }
 
     override fun zoom(isZoom: Boolean) {
-        cameraManager.handleZoom(isZoom)
+        cameraManager.zoom(isZoom)
     }
 
     override fun touched() {
@@ -63,8 +62,9 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
         }
     }
 
-    override fun recordComplete() {
+    override fun closeCamera() {
         cameraManager.releaseCamera()
+
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -72,7 +72,7 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder?) {
-        cameraManager.releaseCamera()
+        closeCamera()
     }
 
     override fun surfaceCreated(holder: SurfaceHolder?) = Unit

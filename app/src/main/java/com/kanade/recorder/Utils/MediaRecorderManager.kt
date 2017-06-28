@@ -19,10 +19,7 @@ class MediaRecorderManager {
         this.listener = listener
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    fun getSurface(): Surface? {
-        return recorder?.surface
-    }
+    fun getRecorder(): MediaRecorder? = recorder
 
     fun startRecord() {
         if (isRecording) {
@@ -73,12 +70,12 @@ class MediaRecorderManager {
                 recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-                } else {
-                    recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
-                }
 //                recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
 //                recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
 //                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                } else {
+                    recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
+                }
                 recorder.setOrientationHint(90)
                 recorder.setProfile(profile)
                 recorder.setOutputFile(filePath)
