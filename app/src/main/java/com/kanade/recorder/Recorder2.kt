@@ -26,9 +26,9 @@ import java.util.concurrent.TimeUnit
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class Recorder2 : Recorder() {
     private lateinit var mCameraDevice: CameraDevice
-    private var mPreviewBuilder: CaptureRequest.Builder? = null
+    private lateinit var mCameraBuilder: CaptureRequest.Builder
     private var mRecordBuilder: CaptureRequest.Builder? = null
-    private var mPreviewSession: CameraCaptureSession? = null
+    private var mCameraSession: CameraCaptureSession? = null
 
     private val initSize: RecorderSize by lazy {
         val dm = DisplayMetrics()
@@ -49,14 +49,16 @@ class Recorder2 : Recorder() {
             mCameraDevice = cameraDevice
             closePreviewSession()
             try {
-                mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
+                mCameraBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW)
                 val surface = recorder_vv.holder.surface
-                mPreviewBuilder?.addTarget(surface)
+                mCameraBuilder.addTarget(surface)
+                mCameraBuilder.set(CaptureRequest.JPEG_ORIENTATION, 90)
+                mCameraBuilder.set(CaptureRequest.JPEG_QUALITY, 90)
 
                 mCameraDevice.createCaptureSession(listOf(surface),
                         object : CameraCaptureSession.StateCallback() {
                             override fun onConfigured(session: CameraCaptureSession) {
-                                mPreviewSession = session
+                                mCameraSession = session
                                 updatePreview()
                             }
 
@@ -157,7 +159,7 @@ class Recorder2 : Recorder() {
             bottom += hheight
 
             val newRect = Rect(left, top, right, bottom)
-            mPreviewBuilder?.set(CaptureRequest.SCALER_CROP_REGION, newRect)
+            mCameraBuilder.set(CaptureRequest.SCALER_CROP_REGION, newRect)
             updatePreview()
             curZoom = z
         }
@@ -223,33 +225,31 @@ class Recorder2 : Recorder() {
     }
 
     private fun updatePreview() {
-        mPreviewBuilder?.let { builder ->
-            try {
-                builder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
-                mPreviewSession?.setRepeatingRequest(builder.build(), null, mBackgroundHandler)
-            } catch (e: CameraAccessException) {
-                e.printStackTrace()
-            }
+        try {
+            mCameraBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+            mCameraSession?.setRepeatingRequest(mCameraBuilder.build(), null, mBackgroundHandler)
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
         }
     }
 
     private fun startRecord(device: CameraDevice) {
         closePreviewSession()
         try {
-            val preBuilder = mPreviewBuilder
-            mPreviewBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
+            val preBuilder = mCameraBuilder
+            mCameraBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
             mediaRecorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filePath)
 
             val surface = recorder_vv.holder.surface
 
             val surfaces = ArrayList<Surface>()
             surfaces.add(surface)
-            mPreviewBuilder?.addTarget(surface)
+            mCameraBuilder.addTarget(surface)
 
             mediaRecorderManager.getRecorder()?.surface?.let {
                 surfaces.add(it)
-                mPreviewBuilder?.addTarget(it)
-                mPreviewBuilder?.set(CaptureRequest.SCALER_CROP_REGION, preBuilder?.get(CaptureRequest.SCALER_CROP_REGION))
+                mCameraBuilder.addTarget(it)
+                mCameraBuilder.set(CaptureRequest.SCALER_CROP_REGION, preBuilder.get(CaptureRequest.SCALER_CROP_REGION))
                 runOnUiThread { mediaRecorderManager.startRecord() }
             }
 
@@ -260,7 +260,7 @@ class Recorder2 : Recorder() {
                 }
 
                 override fun onConfigured(cameraCaptureSession: CameraCaptureSession) {
-                    mPreviewSession = cameraCaptureSession
+                    mCameraSession = cameraCaptureSession
                     updatePreview()
                 }
 
@@ -276,7 +276,7 @@ class Recorder2 : Recorder() {
     }
 
     private fun closePreviewSession() {
-        mPreviewSession?.close()
+        mCameraSession?.close()
     }
 
     private fun showErrorDialog() {
