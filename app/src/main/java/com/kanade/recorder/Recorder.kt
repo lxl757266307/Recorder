@@ -13,6 +13,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
+import android.util.Log
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
@@ -159,30 +160,13 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         mp.start()
     }
 
-    private fun recordComplete() {
-        if (isRecording) {
-            mediaRecorderManager.stopRecord()
-            isRecording = false
-            val sec = duration / 10.0
-            if (sec < 1) {
-                Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
-            } else {
-                closeCamera()
-                recorder_progress.recordComplete()
-                // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
-                startShowCompleteAni()
-                playVideo(filePath)
-            }
-        }
-    }
-
-    open fun closeCamera() = Unit
+    open fun recordComplete() = Unit
 
     open fun startPreview() = Unit
 
-    open fun zoom(zoom: Int) = Unit
+    open fun zoom(zoom: Float) = Unit
 
-    open fun zoom(isZoom: Boolean) = Unit
+    open fun zoom(zoomIn: Boolean) = Unit
 
     open fun focus(x: Float, y: Float) = Unit
 
@@ -317,7 +301,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
             }
 
     private inner class progressOnTouched : View.OnTouchListener {
-        private var firstTouchY = 0f
+        private var lastTouchY = 0f
         private var touchSlop = 0f
 
         init {
@@ -328,14 +312,14 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         override fun onTouch(v: View?, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    firstTouchY = recorder_vv.y
+                    lastTouchY = recorder_vv.y
                     recorder_progress.startRecord()
                 }
             // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
                 MotionEvent.ACTION_MOVE -> {
                     if (event.y >= recorder_vv.y) return true
-                    val distance = firstTouchY - event.y
-                    zoom((distance / 10).toInt())
+                    zoom(Math.abs(lastTouchY) <= Math.abs(event.y))
+                    lastTouchY = event.y
                 }
                 MotionEvent.ACTION_UP -> {
                     recorder_progress.recordComplete()
@@ -371,6 +355,8 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
                     }
                 }
 
-                override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) = zoom(scaleFactor > 1f)
+                override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) {
+                    zoom(scaleFactor > 1f)
+                }
             })
 }

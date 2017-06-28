@@ -1,6 +1,7 @@
 package com.kanade.recorder.Utils
 
 import android.hardware.Camera
+import android.media.MediaRecorder
 import android.util.Log
 import android.view.SurfaceHolder
 import java.util.*
@@ -116,7 +117,7 @@ class CameraManager : Camera.AutoFocusCallback {
         if (isZoomIn && zoom < maxZoom) {
             zoom++
         } else if (zoom > 0) {
-            zoom--
+            zoom -= 2
         }
 
         params.zoom = zoom

@@ -6,6 +6,7 @@ import android.media.MediaRecorder
 import kotlinx.android.synthetic.main.activity_recorder.*
 import android.util.DisplayMetrics
 import android.view.SurfaceHolder
+import android.widget.Toast
 import com.kanade.recorder.Utils.CameraManager
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.initProfile
@@ -34,7 +35,7 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
     }
 
     override fun onStop() {
-        closeCamera()
+        cameraManager.releaseCamera()
         mediaRecorderManager.releaseMediaRecorder()
         super.onStop()
     }
@@ -47,12 +48,12 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
         cameraManager.startPreview()
     }
 
-    override fun zoom(zoom: Int) {
-        cameraManager.zoom(zoom)
+    override fun zoom(zoom: Float) {
+        cameraManager.zoom(zoom.toInt())
     }
 
-    override fun zoom(isZoom: Boolean) {
-        cameraManager.zoom(isZoom)
+    override fun zoom(zoomIn: Boolean) {
+        cameraManager.zoom(zoomIn)
     }
 
     override fun touched() {
@@ -62,9 +63,21 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
         }
     }
 
-    override fun closeCamera() {
-        cameraManager.releaseCamera()
-
+    override fun recordComplete() {
+        if (isRecording) {
+            mediaRecorderManager.stopRecord()
+            isRecording = false
+            val sec = duration / 10.0
+            if (sec < 1) {
+                Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
+            } else {
+                cameraManager.releaseCamera()
+                recorder_progress.recordComplete()
+                // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
+                startShowCompleteAni()
+                playVideo(filePath)
+            }
+        }
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
@@ -72,7 +85,7 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder?) {
-        closeCamera()
+        cameraManager.releaseCamera()
     }
 
     override fun surfaceCreated(holder: SurfaceHolder?) = Unit

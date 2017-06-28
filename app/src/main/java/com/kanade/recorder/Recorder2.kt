@@ -3,15 +3,17 @@ package com.kanade.recorder
 import android.annotation.TargetApi
 import android.app.AlertDialog
 import android.content.Context
+import android.graphics.Rect
 import android.hardware.camera2.*
+import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.DisplayMetrics
+import android.util.Log
 import android.view.*
 import android.widget.Toast
-import android.widget.VideoView
 import com.kanade.recorder.Utils.RecorderSize
 import com.kanade.recorder.Utils.getBestSize
 import com.kanade.recorder.Utils.initProfile
@@ -25,6 +27,7 @@ import java.util.concurrent.TimeUnit
 class Recorder2 : Recorder() {
     private lateinit var mCameraDevice: CameraDevice
     private var mPreviewBuilder: CaptureRequest.Builder? = null
+    private var mRecordBuilder: CaptureRequest.Builder? = null
     private var mPreviewSession: CameraCaptureSession? = null
 
     private val initSize: RecorderSize by lazy {
@@ -36,6 +39,8 @@ class Recorder2 : Recorder() {
 
     private lateinit var mBackgroundThread: HandlerThread
     private lateinit var mBackgroundHandler: Handler
+    // 当前缩放值
+    private var curZoom = 1f
 
     private val mCameraOpenCloseLock = Semaphore(1)
 
@@ -56,7 +61,7 @@ class Recorder2 : Recorder() {
                             }
 
                             override fun onConfigureFailed(session: CameraCaptureSession) {
-                                Toast.makeText(this@Recorder2, "摄像头加载失败", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@Recorder2, getString(R.string.start_preview_failed), Toast.LENGTH_SHORT).show()
                             }
                         }, mBackgroundHandler)
             } catch (e: CameraAccessException) {
@@ -89,6 +94,25 @@ class Recorder2 : Recorder() {
         startPreview()
     }
 
+    override fun recordComplete() {
+        if (isRecording) {
+            mediaRecorderManager.stopRecord()
+            isRecording = false
+            val sec = duration / 10.0
+            if (sec < 1) {
+                Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
+                closeCamera()
+                startPreview()
+            } else {
+                closeCamera()
+                recorder_progress.recordComplete()
+                // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
+                startShowCompleteAni()
+                playVideo(filePath)
+            }
+        }
+    }
+
     override fun onStop() {
         closeCamera()
         mBackgroundThread.quitSafely()
@@ -111,6 +135,52 @@ class Recorder2 : Recorder() {
         startPreview(holder, initSize.width, initSize.height)
     }
 
+    override fun zoom(zoom: Float) {
+        val manager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraId = manager.cameraIdList[0]
+        val characteristics = manager.getCameraCharacteristics(cameraId)
+
+        val maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM).toInt()
+        val z = Math.min(maxZoom.toFloat(), zoom)
+        val sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+        sensorRect?.let { rect ->
+            var left = rect.width() / 2
+            var right = left
+            var top = rect.height() / 2
+            var bottom = top
+            val hwidth = (rect.width() / (2.0 * zoom)).toInt()
+            val hheight = (rect.height() / (2.0 * zoom)).toInt()
+
+            left -= hwidth
+            right += hwidth
+            top -= hheight
+            bottom += hheight
+
+            val newRect = Rect(left, top, right, bottom)
+            mPreviewBuilder?.set(CaptureRequest.SCALER_CROP_REGION, newRect)
+            updatePreview()
+            curZoom = z
+        }
+    }
+
+    override fun zoom(zoomIn: Boolean) {
+        super.zoom(zoomIn)
+        if (zoomIn) {
+            Log.d(TAG, "zoom in")
+            curZoom += 0.05f
+        } else {
+            if (curZoom > 1) {
+                curZoom -= 0.1f
+            }
+            Log.d(TAG, "zoom out")
+        }
+        zoom(curZoom)
+    }
+
+    override fun focus(x: Float, y: Float) {
+        super.focus(x, y)
+    }
+
     private fun startPreview(holder: SurfaceHolder, width: Int, height: Int) {
         try {
             if (!mCameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
@@ -121,15 +191,16 @@ class Recorder2 : Recorder() {
             val cameraId = manager.cameraIdList[0]
             val characteristics = manager.getCameraCharacteristics(cameraId)
             val map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                    .getOutputSizes(VideoView::class.java)
+                    .getOutputSizes(MediaRecorder::class.java)
                     .map { RecorderSize(it.height, it.width) }
             val screenProp = height / width.toFloat()
             optimalSize = getBestSize(map, 1000, screenProp)
 
             holder.setFixedSize(optimalSize.width, optimalSize.height)
+            holder.setKeepScreenOn(true)
             manager.openCamera(cameraId, mStateCallback, null)
         } catch (e: CameraAccessException) {
-            Toast.makeText(this, "Cannot access the camera.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, R.string.start_preview_failed, Toast.LENGTH_SHORT).show()
             finish()
         } catch (e: NullPointerException) {
             showErrorDialog()
@@ -138,7 +209,7 @@ class Recorder2 : Recorder() {
         }
     }
 
-    override fun closeCamera() {
+    private fun closeCamera() {
         try {
             mCameraOpenCloseLock.acquire()
             closePreviewSession()
@@ -165,8 +236,10 @@ class Recorder2 : Recorder() {
     private fun startRecord(device: CameraDevice) {
         closePreviewSession()
         try {
+            val preBuilder = mPreviewBuilder
             mPreviewBuilder = device.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
             mediaRecorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filePath)
+
             val surface = recorder_vv.holder.surface
 
             val surfaces = ArrayList<Surface>()
@@ -176,6 +249,7 @@ class Recorder2 : Recorder() {
             mediaRecorderManager.getRecorder()?.surface?.let {
                 surfaces.add(it)
                 mPreviewBuilder?.addTarget(it)
+                mPreviewBuilder?.set(CaptureRequest.SCALER_CROP_REGION, preBuilder?.get(CaptureRequest.SCALER_CROP_REGION))
                 runOnUiThread { mediaRecorderManager.startRecord() }
             }
 
@@ -191,7 +265,7 @@ class Recorder2 : Recorder() {
                 }
 
                 override fun onConfigureFailed(cameraCaptureSession: CameraCaptureSession) {
-                    Toast.makeText(this@Recorder2, "摄像头启动失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@Recorder2, getString(R.string.start_record_failed), Toast.LENGTH_SHORT).show()
                 }
             }, mBackgroundHandler)
         } catch (e: CameraAccessException) {
