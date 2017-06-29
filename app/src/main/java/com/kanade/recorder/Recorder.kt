@@ -7,31 +7,30 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.content.Context
 import android.content.Intent
-import android.media.MediaPlayer
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
-import android.view.MotionEvent
-import android.view.View
-import android.view.ViewConfiguration
+import android.view.*
 import android.widget.Toast
 import com.kanade.recorder.GestureImpl.ScaleGestureImpl
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.widget.VideoProgressBtn
 import kotlinx.android.synthetic.main.activity_recorder.*
+import kotlinx.android.synthetic.main.activity_recorder1.*
+import kotlinx.android.synthetic.main.activity_recorder2.*
 import permissions.dispatcher.*
-import java.io.File
 
 @RuntimePermissions
-abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, View.OnClickListener, MediaPlayer.OnPreparedListener {
+abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, View.OnClickListener {
     protected val TAG = "Recorder"
+
     protected lateinit var handler: Handler
     // 录像文件保存位置
     protected lateinit var filePath: String
     protected lateinit var mediaRecorderManager: MediaRecorderManager
+    private lateinit var surfaceView: View
     // 录像时记录已录制时长(用于限制最大录制时间)
     protected var duration = 0f
     protected var isRecording = false
@@ -44,7 +43,6 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
     private val focusAni by lazy { initFocusViewAni() }
     private val showCompleteAni by lazy { initShowCompleteViewAni() }
     private val hideCompleteAni by lazy { initHideCompleteViewAni() }
-
 
     companion object {
         // 允许录像最大时长
@@ -67,7 +65,10 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_recorder)
+        val isLollipop = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+        val layoutResId = if (isLollipop) R.layout.activity_recorder2 else R.layout.activity_recorder1
+        setContentView(layoutResId)
+        surfaceView = if (isLollipop) recorder_tv else recorder_vv
         filePath = intent.getStringExtra(ARG_FILEPATH)
         mediaRecorderManager = MediaRecorderManager()
 
@@ -77,8 +78,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
     override fun onDestroy() {
         super.onDestroy()
         // 释放所有资源
-        stopVideo()
-        mediaRecorderManager.releaseMediaRecorder()
+        release()
     }
 
     protected fun startFocusAni() {
@@ -102,14 +102,15 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         hideCompleteAni.start()
     }
 
-    override fun touched() {
+    final override fun touched() {
         duration = 0f
         isRecording = true
+        startRecord()
         handler.removeCallbacks(runnable)
         handler.post(runnable)
     }
 
-    override fun untouched() {
+    final override fun untouched() {
         // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
         recorder_progress.setProgress(0)
         handler.removeCallbacks(runnable)
@@ -133,50 +134,33 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         handler.postDelayed(runnable, 100)
     }
 
+    abstract fun init(surfaceView: View)
+    abstract fun startRecord()
+    abstract fun recordComplete()
+    abstract fun startPreview()
+    abstract fun playVideo(filePath: String)
+    abstract fun stopPlay()
     /**
-     * 播放录制的视频
+     * 录像成功后显示的按钮中左边的"取消"
      *
-     * 在播放之前需要先关闭摄像头的预览画面和释放camera
+     * 停止视频播放，并删除视频文件(为新的视频录制文件腾出位置)
      *
+     * 并再次启动预览
      */
-    protected fun playVideo(filePath: String) {
-        if (isPlaying) return
-        recorder_vv.setVideoPath(filePath)
-        recorder_vv.start()
-    }
-
-    protected fun stopVideo() {
-        if (!isPlaying) return
-        isPlaying = false
-        recorder_vv.stopPlayback()
-    }
-
+    abstract fun cancelBtnClick()
     /**
-     * 需要播放的录像文件已准备好
+     * 释放资源
      */
-    override fun onPrepared(mp: MediaPlayer) {
-        isPlaying = true
-        mp.isLooping = true
-        mp.start()
-    }
+    abstract fun release()
 
-    open fun recordComplete() = Unit
-
-    open fun startPreview() = Unit
-
-    open fun zoom(zoom: Float) = Unit
-
-    open fun zoom(zoomIn: Boolean) = Unit
-
-    open fun focus(x: Float, y: Float) = Unit
+    abstract fun zoom(zoomIn: Boolean)
+    abstract fun focus(x: Float, y: Float)
 
     @NeedsPermission(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
-    open fun initRecorder() {
+    fun initRecorder() {
         handler = Handler()
         // 先让video_record_focus渲染一次，下面要用到其宽高
         startFocusAni()
-        recorder_vv.setOnPreparedListener(this)
-        recorder_vv.setOnTouchListener(vvOnTouched)
 
         recorder_back.setOnClickListener(this)
         recorder_cancelbtn.setOnClickListener(this)
@@ -184,22 +168,14 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
 
         recorder_progress.setListener(this)
         recorder_progress.setOnTouchListener(progressOnTouched())
+
+        init(surfaceView)
     }
 
     override fun onClick(v: View) {
         when (v.id) {
             R.id.recorder_back -> finish()
-        /**
-         * 停止视频播放，并删除视频文件(为新的视频录制文件腾出位置)
-         *
-         * 并再次启动预览
-         */
-            R.id.recorder_cancelbtn -> {
-                stopVideo()
-                File(filePath).run { if (exists()) delete() }
-                startHideCompleteView()
-                startPreview()
-            }
+            R.id.recorder_cancelbtn -> cancelBtnClick()
             R.id.recorder_positivebtn -> {
                 val result = RecorderResult(filePath, (duration / 10.0).toInt())
                 val data = Intent()
@@ -312,12 +288,12 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         override fun onTouch(v: View?, event: MotionEvent): Boolean {
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
-                    lastTouchY = recorder_vv.y
+                    lastTouchY = surfaceView.y
                     recorder_progress.startRecord()
                 }
             // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
                 MotionEvent.ACTION_MOVE -> {
-                    if (event.y >= recorder_vv.y) return true
+                    if (event.y >= surfaceView.y) return true
                     zoom(Math.abs(lastTouchY) <= Math.abs(event.y))
                     lastTouchY = event.y
                 }
@@ -334,7 +310,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
      *
      * 当正处于播放录像的时候将不会进行处理
      */
-    private val vvOnTouched = View.OnTouchListener { _, event ->
+    protected val viewOnTouched = View.OnTouchListener { _, event ->
         if (isPlaying) return@OnTouchListener true
         return@OnTouchListener scaleGestureListener.onTouched(event)
     }
