@@ -17,8 +17,13 @@
 package com.kanade.recorder.widget;
 
 import android.content.Context;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.util.AttributeSet;
+import android.view.Surface;
 import android.view.TextureView;
+
+import java.io.File;
 
 /**
  * A {@link android.view.TextureView} that can be adjusted to a specified aspect ratio.
@@ -27,6 +32,11 @@ public class AutoFitTextureView extends TextureView {
 
     private int mRatioWidth = 0;
     private int mRatioHeight = 0;
+
+    private File file;
+    private VideoThread thread = new VideoThread();
+    private MediaPlayer player;
+    private Surface surface;
 
     public AutoFitTextureView(Context context) {
         this(context, null);
@@ -38,6 +48,29 @@ public class AutoFitTextureView extends TextureView {
 
     public AutoFitTextureView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+    }
+
+    public void setVideoPath(File file) {
+        if (surface == null) {
+            surface = new Surface(getSurfaceTexture());
+        }
+        this.file = file;
+    }
+
+    public void start() {
+        thread.start();
+    }
+
+    public void stopPlayback() {
+        if (player != null && player.isPlaying()) {
+            if (player != null) {
+                player.stop();
+                player.release();
+                player = null;
+                AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+                am.abandonAudioFocus(null);
+            }
+        }
     }
 
     /**
@@ -73,4 +106,32 @@ public class AutoFitTextureView extends TextureView {
         }
     }
 
+    private class VideoThread extends Thread {
+        @Override
+        public void run() {
+            super.run();
+            if (!file.exists()) {
+                return;
+            }
+            try {
+                AudioManager am = (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+                am.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+
+                player = new MediaPlayer();
+                player.setDataSource(file.getAbsolutePath());
+                player.setSurface(surface);
+                player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                    @Override
+                    public void onPrepared(MediaPlayer mp) {
+                        mp.setLooping(true);
+                        mp.start();
+                    }
+                });
+                player.prepare();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

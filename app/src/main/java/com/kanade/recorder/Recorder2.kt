@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
-import android.util.DisplayMetrics
 import android.util.Log
 import android.view.*
 import android.widget.Toast
@@ -22,6 +21,7 @@ import com.kanade.recorder.Utils.getBestSize
 import com.kanade.recorder.Utils.initProfile
 import com.kanade.recorder.widget.AutoFitTextureView
 import kotlinx.android.synthetic.main.activity_recorder.*
+import java.io.File
 import java.io.IOException
 import java.util.*
 import java.util.concurrent.Semaphore
@@ -33,11 +33,6 @@ class Recorder2 : Recorder() {
     private lateinit var mCameraBuilder: CaptureRequest.Builder
     private var mCameraSession: CameraCaptureSession? = null
 
-    private val initSize: RecorderSize by lazy {
-        val dm = DisplayMetrics()
-        windowManager.defaultDisplay.getMetrics(dm)
-        RecorderSize(dm.heightPixels, dm.widthPixels)
-    }
     private lateinit var optimalSize: RecorderSize
 
     private lateinit var mBackgroundThread: HandlerThread
@@ -49,18 +44,14 @@ class Recorder2 : Recorder() {
     private val mCameraOpenCloseLock = Semaphore(1)
 
     private val mSurfaceTextureListener = object : TextureView.SurfaceTextureListener {
-
         override fun onSurfaceTextureAvailable(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
             openCamera(width, height)
         }
-
         override fun onSurfaceTextureSizeChanged(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
             configureTransform(width, height)
         }
-
         override fun onSurfaceTextureDestroyed(surfaceTexture: SurfaceTexture): Boolean = true
         override fun onSurfaceTextureUpdated(surfaceTexture: SurfaceTexture) = Unit
-
     }
 
     private val mStateCallback = object : CameraDevice.StateCallback() {
@@ -172,11 +163,12 @@ class Recorder2 : Recorder() {
     }
 
     override fun playVideo(filePath: String) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        textureView.setVideoPath(File(filePath))
+        textureView.start()
     }
 
     override fun stopPlay() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        textureView.stopPlayback()
     }
 
     override fun cancelBtnClick() {
@@ -205,6 +197,7 @@ class Recorder2 : Recorder() {
             val sec = duration / 10.0
             if (sec < 1) {
                 Toast.makeText(this, R.string.record_too_short, Toast.LENGTH_LONG).show()
+                startPreview()
             } else {
                 recorder_progress.recordComplete()
                 // 隐藏"录像"和"返回"按钮，显示"取消"和"确认"按钮，并播放已录制的视频
@@ -226,13 +219,11 @@ class Recorder2 : Recorder() {
 
     override fun zoom(zoomIn: Boolean) {
         if (zoomIn) {
-            Log.d(TAG, "zoom in")
             curZoom += 0.05f
         } else {
             if (curZoom > 1) {
                 curZoom -= 0.1f
             }
-            Log.d(TAG, "zoom out")
         }
         zoom(curZoom)
     }
@@ -320,9 +311,7 @@ class Recorder2 : Recorder() {
         if (Surface.ROTATION_90 == rotation || Surface.ROTATION_270 == rotation) {
             bufferRect.offset(centerX - bufferRect.centerX(), centerY - bufferRect.centerY())
             matrix.setRectToRect(viewRect, bufferRect, Matrix.ScaleToFit.FILL)
-            val scale = Math.max(
-                    viewHeight.toFloat() / optimalSize.height,
-                    viewWidth.toFloat() / optimalSize.width)
+            val scale = Math.max(viewHeight.toFloat() / optimalSize.height, viewWidth.toFloat() / optimalSize.width)
             matrix.postScale(scale, scale, centerX, centerY)
             matrix.postRotate((90 * (rotation - 2)).toFloat(), centerX, centerY)
         }

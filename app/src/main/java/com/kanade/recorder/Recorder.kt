@@ -169,6 +169,7 @@ abstract class Recorder : AppCompatActivity(), VideoProgressBtn.AniEndListener, 
         recorder_progress.setListener(this)
         recorder_progress.setOnTouchListener(progressOnTouched())
 
+        surfaceView.setOnTouchListener(viewOnTouched)
         init(surfaceView)
     }
 

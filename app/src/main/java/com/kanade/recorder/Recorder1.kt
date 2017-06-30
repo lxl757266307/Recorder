@@ -28,7 +28,6 @@ class Recorder1 : Recorder(), SurfaceHolder.Callback, MediaRecorderManager.Media
     override fun init(surfaceView: View) {
         videoView = surfaceView as VideoView
         videoView.setOnPreparedListener(this)
-        videoView.setOnTouchListener(viewOnTouched)
         mediaRecorderManager.setListener(this)
 
         val dm = DisplayMetrics()

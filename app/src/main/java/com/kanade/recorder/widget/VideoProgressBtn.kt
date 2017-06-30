@@ -9,9 +9,10 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
+import android.view.MotionEvent
 import android.view.View
 
-class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
+class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), View.OnTouchListener {
     private val TAG = "VideoProgressBar"
     private val CIRCLE_LINE_WIDTH = 10
     // 动画持续时间
@@ -119,12 +120,23 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
             super.onAnimationEnd(animation)
             listener?.touched()
         }
+
+        override fun onAnimationCancel(animation: Animator?) {
+            super.onAnimationCancel(animation)
+            btnScale = 1f
+            progressScale = 1f
+        }
     }
 
     private val untouchedAdapter = object : AnimatorListenerAdapter() {
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
             listener?.untouched()
+        }
+
+        override fun onAnimationCancel(animation: Animator?) {
+            super.onAnimationCancel(animation)
+
         }
     }
 
@@ -143,6 +155,24 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     fun setProgress(progress: Int) {
         this.progress = progress
         invalidate()
+    }
+
+    override fun onTouch(v: View, event: MotionEvent): Boolean {
+        when (event.action) {
+            MotionEvent.ACTION_DOWN -> {
+                if (untouchedAniSet.isRunning) {
+                    untouchedAniSet.cancel()
+                }
+                touchedAniSet.start()
+            }
+            MotionEvent.ACTION_UP -> {
+                if (touchedAniSet.isRunning) {
+                    touchedAniSet.cancel()
+                }
+                untouchedAniSet.start()
+            }
+        }
+        return true
     }
 
     interface AniEndListener {
