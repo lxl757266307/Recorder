@@ -2,6 +2,7 @@ package com.kanade.recorder
 
 import android.content.Intent
 import android.media.MediaPlayer
+import android.os.Build
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v7.app.AppCompatActivity
@@ -11,8 +12,11 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.VideoView
 import com.kanade.recorder.camera1.Camera1Fragment
+import com.kanade.recorder.camera2.Camera2Fragment
 
 /**
+ * preview the recorded video
+ *
  * Created by kanade on 2017/8/21.
  */
 class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPreparedListener {
@@ -72,9 +76,15 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
 
     override fun onClick(v: View) {
         if (v.id == R.id.fg_pv_cancel) {
+            val isLollipop = Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+            val fg: Fragment = if (isLollipop) {
+                Camera2Fragment.newInstance(filepath)
+            } else {
+                Camera1Fragment.newInstance(filepath)
+            }
             activity.supportFragmentManager
                     .beginTransaction()
-                    .replace(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
+                    .replace(R.id.recorder_fl, fg)
                     .addToBackStack(null)
                     .commit()
         } else if (v.id == R.id.fg_pv_positive) {

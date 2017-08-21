@@ -9,10 +9,9 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
-import android.view.MotionEvent
 import android.view.View
 
-class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), View.OnTouchListener {
+class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private val TAG = "VideoProgressBar"
     private val CIRCLE_LINE_WIDTH = 10
     // 动画持续时间
@@ -109,6 +108,20 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
         setMeasuredDimension(maxSize, maxSize)
     }
 
+    fun startRecord() {
+        if (releaseAni.isRunning) {
+            releaseAni.cancel()
+        }
+        pressedAni.start()
+    }
+
+    fun recordComplete() {
+        if (pressedAni.isRunning) {
+            pressedAni.cancel()
+        }
+        releaseAni.start()
+    }
+
     private val pressedListener = object : AnimatorListenerAdapter() {
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
@@ -150,24 +163,6 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
     fun setProgress(progress: Int) {
         this.progress = progress
         invalidate()
-    }
-
-    override fun onTouch(v: View, event: MotionEvent): Boolean {
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                if (releaseAni.isRunning) {
-                    releaseAni.cancel()
-                }
-                pressedAni.start()
-            }
-            MotionEvent.ACTION_UP -> {
-                if (pressedAni.isRunning) {
-                    pressedAni.cancel()
-                }
-                releaseAni.start()
-            }
-        }
-        return true
     }
 
     interface Listener {

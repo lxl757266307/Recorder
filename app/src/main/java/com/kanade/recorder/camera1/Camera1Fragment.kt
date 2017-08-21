@@ -106,7 +106,6 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         }
     }
 
-    private val handler: Handler by lazy { Handler() }
     private val runnable: Runnable by lazy { initRunnable() }
     private val profile: CamcorderProfile by lazy {
         val size = cameraManager.getVideoSize()
@@ -115,22 +114,22 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
 
     override fun onPressed() {
         duration = 0
-        isRecording = true
         if (recorderManager.prepareRecord(profile, filepath)) {
             recorderManager.startRecord()
+            isRecording = true
         }
-        handler.removeCallbacks(runnable)
-        handler.post(runnable)
+        progressBtn.removeCallbacks(runnable)
+        progressBtn.post(runnable)
     }
 
     override fun onRelease() {
+        // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
         progressBtn.setProgress(0)
-        handler.removeCallbacks(runnable)
+        progressBtn.removeCallbacks(runnable)
         recordComplete()
     }
 
     private fun recordComplete() {
-        // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
         if (!isRecording) {
             return
         }
@@ -175,6 +174,9 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
      * 当录制时间超过最大时长时，强制停止
      */
     private fun initRunnable() = Runnable {
+        if (!isRecording) {
+            return@Runnable
+        }
         duration++
         val sec = duration / 10.0
         val progress = (sec / RecorderActivity.MAX_DURATION * 100).toInt()
@@ -183,7 +185,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
             recordComplete()
             return@Runnable
         }
-        handler.postDelayed(runnable, 100)
+        progressBtn.postDelayed(runnable, 100)
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
@@ -206,18 +208,22 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         }
 
         override fun onTouch(v: View, event: MotionEvent): Boolean {
-            if (event.action == MotionEvent.ACTION_DOWN) {
-                lastTouchY = surfaceview.y
-            } else if (event.action == MotionEvent.ACTION_MOVE) {
-                // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
-                if (event.y >= surfaceview.y) {
-                    return true
+            when(event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    lastTouchY = surfaceview.y
+                    progressBtn.startRecord()
                 }
-                val isZoom = Math.abs(lastTouchY) <= Math.abs(event.y)
-                cameraManager.zoom(isZoom)
-                lastTouchY = event.y
+                MotionEvent.ACTION_MOVE -> {
+                    // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
+                    if (event.y >= surfaceview.y) {
+                        return true
+                    }
+                    val isZoom = Math.abs(lastTouchY) <= Math.abs(event.y)
+                    cameraManager.zoom(isZoom)
+                    lastTouchY = event.y
+                }
+                MotionEvent.ACTION_UP -> progressBtn.recordComplete()
             }
-            progressBtn.onTouch(v, event)
             return true
         }
     }
@@ -269,5 +275,4 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
                     .before(ObjectAnimator.ofFloat(focusBtn, "alpha", 1f, 0f).apply { duration = 750 })
         }
     }
-
 }

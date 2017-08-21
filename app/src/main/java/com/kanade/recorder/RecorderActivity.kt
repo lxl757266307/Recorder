@@ -14,9 +14,6 @@ import android.widget.Toast
 import com.kanade.recorder.camera1.Camera1Fragment
 import com.kanade.recorder.camera2.Camera2Fragment
 
-/**
- * Created by kanade on 2017/8/21.
- */
 class RecorderActivity : AppCompatActivity() {
     private val permissions = arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
 
@@ -99,9 +96,9 @@ class RecorderActivity : AppCompatActivity() {
         if (fm.backStackEntryCount <= 0) {
             val transaction = fm.beginTransaction()
             if (isLollipop) {
-                transaction.replace(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
-            } else {
                 transaction.replace(R.id.recorder_fl, Camera2Fragment.newInstance(filepath))
+            } else {
+                transaction.replace(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
             }
             transaction.addToBackStack(null)
                     .commit()

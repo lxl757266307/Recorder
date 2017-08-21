@@ -1,5 +1,6 @@
 <resources>
-    <string name="button_allow">确定</string>
+    <string name="button_positive">确定</string>
+    <string name="button_allow">允许</string>
     <string name="button_deny">拒绝</string>
     <string name="record_too_short">录像时间太短</string>
     <string name="camera_error">设备不支持拍照功能</string>

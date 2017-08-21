@@ -6,11 +6,9 @@ import android.hardware.Camera
 import android.media.CamcorderProfile
 import android.util.Log
 import java.util.*
-import java.util.concurrent.locks.Lock
 
 /**
  * Convert touch position x:y to [Camera.Area] position -1000:-1000 to 1000:1000.
- * 注意这里长边是width
  */
 fun calculateTapArea(x: Float, y: Float, svWidth: Int, svHeight: Int, coefficient: Float): Rect {
     val focusAreaSize = 300f
