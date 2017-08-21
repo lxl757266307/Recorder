@@ -70,9 +70,9 @@ class MediaRecorderManager {
                 recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-//                recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-//                recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-//                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+//                    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+//                    recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
+//                    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 } else {
                     recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
                 }

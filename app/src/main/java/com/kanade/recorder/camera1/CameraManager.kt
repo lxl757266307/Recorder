@@ -1,10 +1,12 @@
-package com.kanade.recorder.Utils
+package com.kanade.recorder.camera1
 
 import android.hardware.Camera
-import android.media.MediaRecorder
 import android.util.Log
 import android.view.SurfaceHolder
-import java.util.*
+import com.kanade.recorder.Utils.RecorderSize
+import com.kanade.recorder.Utils.calculateTapArea
+import com.kanade.recorder.Utils.getBestSize
+import java.util.ArrayList
 
 @Suppress("DEPRECATION")
 class CameraManager : Camera.AutoFocusCallback {
@@ -72,11 +74,8 @@ class CameraManager : Camera.AutoFocusCallback {
 
     /**
      * 对焦
-     * @param x
-     * *
-     * @param y
      */
-     @Synchronized fun FocusMetering(x: Float, y: Float) {
+    @Synchronized fun FocusMetering(x: Float, y: Float) {
         if (!isPreview || isRelease) return
         val focusRect = calculateTapArea(x, y, initWidth, initHeight, 1f)
         val meteringRect = calculateTapArea(x, y, initWidth, initHeight, 1.5f)
@@ -149,11 +148,9 @@ class CameraManager : Camera.AutoFocusCallback {
         this.svWidth = optimalSize.width
         this.svHeight = optimalSize.height
 
-        // 设置holder
         holder.setFixedSize(svWidth, svHeight)
         holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
 
-        // 设置params
         params.zoom = 1
         params.setPreviewSize(svWidth, svHeight)
         params.setPictureSize(svWidth, svHeight)

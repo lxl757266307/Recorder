@@ -17,10 +17,16 @@ class ScaleGestureImpl(ctx: Context, var listener: GestureListener): ScaleGestur
     @SuppressLint("Recycle")
     private fun processTouchEvent(event: MotionEvent): Boolean {
         when (event.action) {
-            MotionEvent.ACTION_DOWN -> if (event.pointerCount > 1) isMulti = true
+            MotionEvent.ACTION_DOWN -> {
+                if (event.pointerCount > 1) {
+                    isMulti = true
+                }
+            }
             MotionEvent.ACTION_UP -> {
                 if (event.pointerCount <= 1) {
-                    if (!isMulti) listener.onSingleTap(event)
+                    if (!isMulti) {
+                        listener.onSingleTap(event)
+                    }
                     isMulti = false
                 }
             }
@@ -30,7 +36,9 @@ class ScaleGestureImpl(ctx: Context, var listener: GestureListener): ScaleGestur
 
     override fun onScale(detector: ScaleGestureDetector): Boolean {
         val scaleFactor = detector.scaleFactor
-        if (java.lang.Float.isNaN(scaleFactor) || java.lang.Float.isInfinite(scaleFactor)) return false
+        if (java.lang.Float.isNaN(scaleFactor) || java.lang.Float.isInfinite(scaleFactor)) {
+            return false
+        }
         listener.onScale(scaleFactor, detector.focusX, detector.focusY)
         return true
     }

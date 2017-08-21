@@ -20,7 +20,7 @@ import com.kanade.recorder.Utils.RecorderSize
 import com.kanade.recorder.Utils.getBestSize
 import com.kanade.recorder.Utils.initProfile
 import com.kanade.recorder.widget.AutoFitTextureView
-import kotlinx.android.synthetic.main.activity_recorder.*
+import kotlinx.android.synthetic.main.fragment_recorder.*
 import java.io.File
 import java.io.IOException
 import java.util.*

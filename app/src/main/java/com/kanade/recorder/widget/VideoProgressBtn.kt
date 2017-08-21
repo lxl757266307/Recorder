@@ -35,31 +35,31 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
     private var progressScale = 1f
     private var progress = 0
 
-    private val touchedAniSet by lazy {
+    private val pressedAni by lazy {
         val progressAni = ValueAnimator.ofFloat(1f, ZOOM_IN)
         val btnAni = ValueAnimator.ofFloat(1f, 0.5f)
         progressAni.addUpdateListener(progressListener)
         btnAni.addUpdateListener(btnListener)
         AnimatorSet().apply {
             playTogether(progressAni, btnAni)
-            addListener(touchedAdapter)
+            addListener(pressedListener)
             duration = ANI_DURATION
         }
     }
 
-    private val untouchedAniSet by lazy {
+    private val releaseAni by lazy {
         val progressAni = ValueAnimator.ofFloat(ZOOM_IN, 1f)
         val btnAni = ValueAnimator.ofFloat(0.5f, 1f)
         progressAni.addUpdateListener(progressListener)
         btnAni.addUpdateListener(btnListener)
         AnimatorSet().apply {
             playTogether(progressAni, btnAni)
-            addListener(untouchedAdapter)
+            addListener(releaseListener)
             duration = ANI_DURATION
         }
     }
 
-    private var listener: AniEndListener? = null
+    private var listener: Listener? = null
 
     init {
         btnPaint.isAntiAlias = true
@@ -79,7 +79,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
         rectF.top = CIRCLE_LINE_WIDTH / 2 + .8f
     }
 
-    fun setListener(listener: AniEndListener) {
+    fun setListener(listener: Listener) {
         this.listener = listener
     }
 
@@ -94,7 +94,9 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
         val p = progress.toFloat() / 100 * 360
         canvas.drawCircle(circleCenter, circleCenter, progressSize / 2 - 1f, bgPaint)
         canvas.drawCircle(circleCenter, circleCenter, btnSize / 3 - 1f, btnPaint)
-        if (!touchedAniSet.isRunning && !untouchedAniSet.isRunning) canvas.drawArc(rectF, -90f, p, false, paint)
+        if (!pressedAni.isRunning && !releaseAni.isRunning) {
+            canvas.drawArc(rectF, -90f, p, false, paint)
+        }
     }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
@@ -107,18 +109,10 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
         setMeasuredDimension(maxSize, maxSize)
     }
 
-    fun startRecord() {
-       touchedAniSet.start()
-    }
-
-    fun recordComplete() {
-        untouchedAniSet.start()
-    }
-
-    private val touchedAdapter = object : AnimatorListenerAdapter() {
+    private val pressedListener = object : AnimatorListenerAdapter() {
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
-            listener?.touched()
+            listener?.onPressed()
         }
 
         override fun onAnimationCancel(animation: Animator?) {
@@ -128,15 +122,16 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
         }
     }
 
-    private val untouchedAdapter = object : AnimatorListenerAdapter() {
+    private val releaseListener = object : AnimatorListenerAdapter() {
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
-            listener?.untouched()
+            listener?.onRelease()
         }
 
         override fun onAnimationCancel(animation: Animator?) {
             super.onAnimationCancel(animation)
-
+            btnScale = 1f
+            progressScale = 1f
         }
     }
 
@@ -160,24 +155,24 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs), Vi
     override fun onTouch(v: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
-                if (untouchedAniSet.isRunning) {
-                    untouchedAniSet.cancel()
+                if (releaseAni.isRunning) {
+                    releaseAni.cancel()
                 }
-                touchedAniSet.start()
+                pressedAni.start()
             }
             MotionEvent.ACTION_UP -> {
-                if (touchedAniSet.isRunning) {
-                    touchedAniSet.cancel()
+                if (pressedAni.isRunning) {
+                    pressedAni.cancel()
                 }
-                untouchedAniSet.start()
+                releaseAni.start()
             }
         }
         return true
     }
 
-    interface AniEndListener {
-        fun touched()
+    interface Listener {
+        fun onPressed()
 
-        fun untouched()
+        fun onRelease()
     }
 }

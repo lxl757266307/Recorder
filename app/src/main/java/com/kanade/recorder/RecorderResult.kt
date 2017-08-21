@@ -14,13 +14,10 @@ data class RecorderResult(var filepath: String, var duration: Int) : Parcelable 
     companion object {
         @JvmField
         val CREATOR = object : Parcelable.Creator<RecorderResult> {
-            override fun createFromParcel(source: Parcel): RecorderResult {
-                return RecorderResult(source.readString(), source.readInt())
-            }
+            override fun createFromParcel(source: Parcel): RecorderResult =
+                    RecorderResult(source.readString(), source.readInt())
 
-            override fun newArray(size: Int): Array<RecorderResult?> {
-                return arrayOfNulls(size)
-            }
+            override fun newArray(size: Int): Array<RecorderResult?> = arrayOfNulls(size)
         }
     }
 }
