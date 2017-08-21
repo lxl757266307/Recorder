@@ -22,7 +22,7 @@ class RecorderActivity : AppCompatActivity() {
         const val RESULT_FILEPATH = "result_filepath"
         const val ARG_FILEPATH = "arg_filepath"
         const val ARG_DURATION = "arg_duration"
-        const val MAX_DURATION = 10
+        const val DURATION_LIMIT = 10
 
         @JvmStatic
         fun newInstance(context: Context, filepath: String): Intent {

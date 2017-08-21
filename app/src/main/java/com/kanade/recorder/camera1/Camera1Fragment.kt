@@ -7,7 +7,6 @@ import android.hardware.Camera
 import android.media.CamcorderProfile
 import android.media.MediaRecorder
 import android.os.Bundle
-import android.os.Handler
 import android.support.v4.app.Fragment
 import android.util.DisplayMetrics
 import android.view.*
@@ -179,9 +178,9 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         }
         duration++
         val sec = duration / 10.0
-        val progress = (sec / RecorderActivity.MAX_DURATION * 100).toInt()
+        val progress = (sec / RecorderActivity.DURATION_LIMIT * 100).toInt()
         progressBtn.setProgress(progress)
-        if (sec > RecorderActivity.MAX_DURATION) {
+        if (sec > RecorderActivity.DURATION_LIMIT) {
             recordComplete()
             return@Runnable
         }

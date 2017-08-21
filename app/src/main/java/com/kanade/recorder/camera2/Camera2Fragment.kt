@@ -71,8 +71,8 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     private val scaleGestureListener by lazy { initScaleGestureListener() }
     private var mCameraSession: CameraCaptureSession? = null
 
-    // 当前缩放值
-    private var curZoom = 1f
+    // 上一个缩放值
+    private var lastZoom = 1f
     private val mCameraOpenCloseLock = Semaphore(1)
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -187,12 +187,12 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             val texture = textureView.surfaceTexture
             texture.setDefaultBufferSize(optimalSize.width, optimalSize.height)
 
-            val surface = Surface(texture)
-            mCameraBuilder.addTarget(surface)
+            val previewSurface = Surface(texture)
+            mCameraBuilder.addTarget(previewSurface)
             mCameraBuilder.set(CaptureRequest.JPEG_ORIENTATION, 90)
             mCameraBuilder.set(CaptureRequest.JPEG_QUALITY, 90)
 
-            mCameraDevice.createCaptureSession(listOf(surface),
+            mCameraDevice.createCaptureSession(listOf(previewSurface),
                     object : CameraCaptureSession.StateCallback() {
                         override fun onConfigured(session: CameraCaptureSession) {
                             mCameraSession = session
@@ -230,29 +230,32 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             recorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filepath)
 
             val texture = textureView.surfaceTexture
-            val surface = Surface(texture)
+            val previewSurface = Surface(texture)
 
+            // Set up Surface for the camera preview
             val surfaces = ArrayList<Surface>()
-            surfaces.add(surface)
-            mCameraBuilder.addTarget(surface)
+            surfaces.add(previewSurface)
+            mCameraBuilder.addTarget(previewSurface)
 
+            // Set up Surface for the MediaRecorder
             recorderManager.getRecorder()?.surface?.let {
                 duration = 0
                 surfaces.add(it)
                 mCameraBuilder.addTarget(it)
                 mCameraBuilder.set(CaptureRequest.SCALER_CROP_REGION, preBuilder.get(CaptureRequest.SCALER_CROP_REGION))
-                activity.runOnUiThread {
-                    recorderManager.startRecord()
-                    isRecording = true
-                }
-                progressBtn.removeCallbacks(runnable)
-                progressBtn.post(runnable)
             }
 
             mCameraDevice.createCaptureSession(surfaces, object : CameraCaptureSession.StateCallback() {
                 override fun onConfigured(cameraCaptureSession: CameraCaptureSession) {
                     mCameraSession = cameraCaptureSession
                     updatePreview()
+
+                    activity.runOnUiThread {
+                        recorderManager.startRecord()
+                        isRecording = true
+                    }
+                    progressBtn.removeCallbacks(runnable)
+                    progressBtn.post(runnable)
                 }
 
                 override fun onConfigureFailed(cameraCaptureSession: CameraCaptureSession) {
@@ -267,8 +270,9 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     }
 
     override fun onRelease() {
-        // 当手指放开即马上重置按钮的进度条，并停止runnable(避免录音时长仍在增加)
+        // reset the progress when the finger release
         progressBtn.setProgress(0)
+        // remove the runnable avoid still increasing duration
         progressBtn.removeCallbacks(runnable)
         recordComplete()
     }
@@ -289,7 +293,9 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             startPreview()
         } else {
             progressBtn.recordComplete()
-            previewVideo()
+            progressBtn.postDelayed({
+                previewVideo()
+            }, 300)
         }
     }
 
@@ -301,20 +307,15 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
                 .commit()
     }
 
-    /**
-     * 递增duration，并更新按钮的进度条
-     *
-     * 当录制时间超过最大时长时，强制停止
-     */
     private fun initRunnable() = Runnable {
         if (!isRecording) {
             return@Runnable
         }
         duration++
         val sec = duration / 10.0
-        val progress = (sec / RecorderActivity.MAX_DURATION * 100).toInt()
+        val progress = (sec / RecorderActivity.DURATION_LIMIT * 100).toInt()
         progressBtn.setProgress(progress)
-        if (sec > RecorderActivity.MAX_DURATION) {
+        if (sec > RecorderActivity.DURATION_LIMIT) {
             recordComplete()
             return@Runnable
         }
@@ -341,7 +342,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             manager.openCamera(cameraId, mStateCallback, null)
         } catch (e: CameraAccessException) {
             Toast.makeText(context, R.string.start_preview_failed, Toast.LENGTH_SHORT).show()
-            // 启动旧的camera模式
+            // open the fragment of deprecated camera api
             activity.supportFragmentManager
                     .beginTransaction()
                     .replace(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
@@ -426,13 +427,13 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
 
     private fun zoom(zoomIn: Boolean) {
         if (zoomIn) {
-            curZoom += 0.05f
+            lastZoom += 0.05f
         } else {
-            if (curZoom > 1) {
-                curZoom -= 0.1f
+            if (lastZoom > 1) {
+                lastZoom -= 0.15f
             }
         }
-        zoom(curZoom)
+        zoom(lastZoom)
     }
 
     private fun zoom(zoom: Float) {
@@ -459,7 +460,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             val newRect = Rect(left, top, right, bottom)
             mCameraBuilder.set(CaptureRequest.SCALER_CROP_REGION, newRect)
             updatePreview()
-            curZoom = z
+            lastZoom = z
         }
     }
 
