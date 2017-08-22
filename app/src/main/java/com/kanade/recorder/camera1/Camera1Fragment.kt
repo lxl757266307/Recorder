@@ -2,6 +2,7 @@ package com.kanade.recorder.camera1
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.hardware.Camera
 import android.media.CamcorderProfile
@@ -12,11 +13,10 @@ import android.util.DisplayMetrics
 import android.view.*
 import android.widget.ImageView
 import android.widget.Toast
-import com.kanade.recorder.AnimatorSet
 import com.kanade.recorder.GestureImpl.ScaleGestureImpl
 import com.kanade.recorder.PreviewFragment
 import com.kanade.recorder.R
-import com.kanade.recorder.RecorderActivity
+import com.kanade.recorder.Recorder
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.initProfile
 import com.kanade.recorder.widget.VideoProgressBtn
@@ -26,7 +26,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         @JvmStatic
         fun newInstance(filepath: String): Camera1Fragment {
             val args = Bundle()
-            args.putString(RecorderActivity.ARG_FILEPATH, filepath)
+            args.putString(Recorder.ARG_FILEPATH, filepath)
 
             val fragment = Camera1Fragment()
             fragment.arguments = args
@@ -50,7 +50,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     private val gestureListener by lazy { initScaleGestureListener() }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        filepath = arguments.getString(RecorderActivity.ARG_FILEPATH)
+        filepath = arguments.getString(Recorder.ARG_FILEPATH)
         val view = inflater.inflate(R.layout.fragment_camera1, container, false)
         initView(view)
         initCameraManager()
@@ -148,7 +148,8 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     private fun previewVideo() {
         activity.supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.recorder_fl, PreviewFragment.newInstance(filepath, duration))
+                .add(R.id.recorder_fl, PreviewFragment.newInstance(filepath, duration))
+                .detach(this)
                 .addToBackStack(null)
                 .commit()
     }
@@ -178,9 +179,9 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         }
         duration++
         val sec = duration / 10.0
-        val progress = (sec / RecorderActivity.DURATION_LIMIT * 100).toInt()
+        val progress = (sec / Recorder.DURATION_LIMIT * 100).toInt()
         progressBtn.setProgress(progress)
-        if (sec > RecorderActivity.DURATION_LIMIT) {
+        if (sec > Recorder.DURATION_LIMIT) {
             recordComplete()
             return@Runnable
         }
@@ -255,23 +256,24 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     }
 
 
-    private fun initFocusViewAni() = AnimatorSet {
-        setListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationStart(animation: Animator?) {
-                super.onAnimationStart(animation)
-                focusBtn.alpha = 1f
-                focusBtn.visibility = View.VISIBLE
-            }
+    private fun initFocusViewAni(): AnimatorSet {
+        return AnimatorSet().apply {
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationStart(animation: Animator?) {
+                    super.onAnimationStart(animation)
+                    focusBtn.alpha = 1f
+                    focusBtn.visibility = View.VISIBLE
+                }
 
-            override fun onAnimationEnd(animation: Animator?) {
-                super.onAnimationEnd(animation)
-                focusBtn.visibility = View.GONE
-            }
-        })
-        invoke {
+                override fun onAnimationEnd(animation: Animator?) {
+                    super.onAnimationEnd(animation)
+                    focusBtn.visibility = View.GONE
+                }
+            })
             play(ObjectAnimator.ofFloat(focusBtn, "scaleX", 1.5f, 1f).apply { duration = 500 })
                     .with(ObjectAnimator.ofFloat(focusBtn, "scaleY", 1.5f, 1f).apply { duration = 500 })
                     .before(ObjectAnimator.ofFloat(focusBtn, "alpha", 1f, 0f).apply { duration = 750 })
         }
     }
+
 }

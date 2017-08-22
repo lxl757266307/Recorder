@@ -34,30 +34,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private var progressScale = 1f
     private var progress = 0
 
-    private val pressedAni by lazy {
-        val progressAni = ValueAnimator.ofFloat(1f, ZOOM_IN)
-        val btnAni = ValueAnimator.ofFloat(1f, 0.5f)
-        progressAni.addUpdateListener(progressListener)
-        btnAni.addUpdateListener(btnListener)
-        AnimatorSet().apply {
-            playTogether(progressAni, btnAni)
-            addListener(pressedListener)
-            duration = ANI_DURATION
-        }
-    }
-
-    private val releaseAni by lazy {
-        val progressAni = ValueAnimator.ofFloat(ZOOM_IN, 1f)
-        val btnAni = ValueAnimator.ofFloat(0.5f, 1f)
-        progressAni.addUpdateListener(progressListener)
-        btnAni.addUpdateListener(btnListener)
-        AnimatorSet().apply {
-            playTogether(progressAni, btnAni)
-            addListener(releaseListener)
-            duration = ANI_DURATION
-        }
-    }
-
+    private var animationIsPlaying = false
     private var listener: Listener? = null
 
     init {
@@ -90,10 +67,10 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
         rectF.right = progressSize - (CIRCLE_LINE_WIDTH / 2).toFloat() - 1.5f
         rectF.bottom = progressSize - (CIRCLE_LINE_WIDTH / 2).toFloat() - 1.5f
 
-        val p = progress.toFloat() / 100 * 360
         canvas.drawCircle(circleCenter, circleCenter, progressSize / 2 - 1f, bgPaint)
         canvas.drawCircle(circleCenter, circleCenter, btnSize / 3 - 1f, btnPaint)
-        if (!pressedAni.isRunning && !releaseAni.isRunning) {
+        if (!animationIsPlaying) {
+            val p = progress.toFloat() / 100 * 360
             canvas.drawArc(rectF, -90f, p, false, paint)
         }
     }
@@ -109,42 +86,48 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     }
 
     fun startRecord() {
-        if (releaseAni.isRunning) {
-            releaseAni.cancel()
-        }
-        pressedAni.start()
+        animationIsPlaying = true
+        AnimatorSet().apply {
+            duration = ANI_DURATION
+            playTogether(
+                    ValueAnimator.ofFloat(progressScale, ZOOM_IN).apply {
+                        addUpdateListener(progressListener)
+                    },
+                    ValueAnimator.ofFloat(btnScale, 0.5f).apply {
+                        addUpdateListener(btnListener)
+                    })
+            addListener(pressedListener)
+        }.start()
     }
 
     fun recordComplete() {
-        if (pressedAni.isRunning) {
-            pressedAni.cancel()
-        }
-        releaseAni.start()
+        animationIsPlaying = true
+        AnimatorSet().apply {
+            duration = ANI_DURATION
+            playTogether(
+                    ValueAnimator.ofFloat(progressScale, 1f).apply {
+                        addUpdateListener(progressListener)
+                    },
+                    ValueAnimator.ofFloat(btnScale, 1f).apply {
+                        addUpdateListener(btnListener)
+                    })
+            addListener(releaseListener)
+        }.start()
     }
 
     private val pressedListener = object : AnimatorListenerAdapter() {
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
+            animationIsPlaying = false
             listener?.onPressed()
-        }
-
-        override fun onAnimationCancel(animation: Animator?) {
-            super.onAnimationCancel(animation)
-            btnScale = 1f
-            progressScale = 1f
         }
     }
 
     private val releaseListener = object : AnimatorListenerAdapter() {
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
+            animationIsPlaying = false
             listener?.onRelease()
-        }
-
-        override fun onAnimationCancel(animation: Animator?) {
-            super.onAnimationCancel(animation)
-            btnScale = 1f
-            progressScale = 1f
         }
     }
 

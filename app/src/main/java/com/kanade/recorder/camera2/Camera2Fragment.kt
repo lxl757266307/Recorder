@@ -2,6 +2,7 @@ package com.kanade.recorder.camera2
 
 import android.animation.Animator
 import android.animation.AnimatorListenerAdapter
+import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.annotation.TargetApi
 import android.app.AlertDialog
@@ -11,24 +12,22 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.SurfaceTexture
 import android.hardware.camera2.*
+import android.hardware.camera2.params.MeteringRectangle
 import android.media.MediaRecorder
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.support.v4.app.Fragment
+import android.util.Log
 import android.view.*
 import android.widget.ImageView
 import android.widget.Toast
-import com.kanade.recorder.AnimatorSet
 import com.kanade.recorder.GestureImpl.ScaleGestureImpl
 import com.kanade.recorder.PreviewFragment
 import com.kanade.recorder.R
-import com.kanade.recorder.RecorderActivity
-import com.kanade.recorder.Utils.MediaRecorderManager
-import com.kanade.recorder.Utils.RecorderSize
-import com.kanade.recorder.Utils.getBestSize
-import com.kanade.recorder.Utils.initProfile
+import com.kanade.recorder.Recorder
+import com.kanade.recorder.Utils.*
 import com.kanade.recorder.camera1.Camera1Fragment
 import com.kanade.recorder.widget.AutoFitTextureView
 import com.kanade.recorder.widget.VideoProgressBtn
@@ -40,10 +39,11 @@ import java.util.concurrent.TimeUnit
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     companion object {
+        private const val TAG = "Camera2"
         @JvmStatic
         fun newInstance(filepath: String): Camera2Fragment {
             val args = Bundle()
-            args.putString(RecorderActivity.ARG_FILEPATH, filepath)
+            args.putString(Recorder.ARG_FILEPATH, filepath)
 
             val fragment = Camera2Fragment()
             fragment.arguments = args
@@ -69,17 +69,15 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     private lateinit var mBackgroundHandler: Handler
 
     private val scaleGestureListener by lazy { initScaleGestureListener() }
+    private var mCameraRequest: CaptureRequest? = null
     private var mCameraSession: CameraCaptureSession? = null
 
     // 上一个缩放值
-    private var lastZoom = 1f
+    private var lastScale = 1f
     private val mCameraOpenCloseLock = Semaphore(1)
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        val view = inflater.inflate(R.layout.fragment_camera2, container, false)
-        initView(view)
-        return view
-    }
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? =
+        inflater.inflate(R.layout.fragment_camera2, container, false)
 
     private fun initView(view: View) {
         textureView = view.findViewById(R.id.recorder_tv) as AutoFitTextureView
@@ -93,11 +91,12 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         progressBtn.setOnTouchListener(progressBtnTouched())
     }
 
-    override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        filepath = arguments.getString(RecorderActivity.ARG_FILEPATH)
+        initView(view)
+
+        filepath = arguments.getString(Recorder.ARG_FILEPATH)
         recorderManager = MediaRecorderManager()
-        focusAni.start()
     }
 
     override fun onResume() {
@@ -211,7 +210,8 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     private fun updatePreview() {
         try {
             mCameraBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
-            mCameraSession?.setRepeatingRequest(mCameraBuilder.build(), null, mBackgroundHandler)
+            mCameraRequest = mCameraBuilder.build()
+            mCameraSession?.setRepeatingRequest(mCameraRequest, null, mBackgroundHandler)
         } catch (e: CameraAccessException) {
             e.printStackTrace()
         }
@@ -302,7 +302,8 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     private fun previewVideo() {
         activity.supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.recorder_fl, PreviewFragment.newInstance(filepath, duration))
+                .add(R.id.recorder_fl, PreviewFragment.newInstance(filepath, duration))
+                .detach(this@Camera2Fragment)
                 .addToBackStack(null)
                 .commit()
     }
@@ -313,9 +314,9 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         }
         duration++
         val sec = duration / 10.0
-        val progress = (sec / RecorderActivity.DURATION_LIMIT * 100).toInt()
+        val progress = (sec / Recorder.DURATION_LIMIT * 100).toInt()
         progressBtn.setProgress(progress)
-        if (sec > RecorderActivity.DURATION_LIMIT) {
+        if (sec > Recorder.DURATION_LIMIT) {
             recordComplete()
             return@Runnable
         }
@@ -416,6 +417,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
                 val y = event.y
                 focusBtn.x = x - focusBtn.width / 2
                 focusBtn.y = y - focusBtn.height / 2
+                focus(x, y)
                 startFocusAni()
             }
         }
@@ -425,15 +427,33 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         }
     })
 
+    private fun focus(x: Float, y: Float) {
+        val focusRect = calculateTapArea(x, y, optimalSize.width, optimalSize.height, 1f)
+        val meteringRect = calculateTapArea(x, y, optimalSize.width, optimalSize.height, 1.5f)
+
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, arrayOf(MeteringRectangle(focusRect, 1000)))
+        mCameraBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, arrayOf(MeteringRectangle(meteringRect, 1000)))
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO)
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START)
+        mCameraBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START)
+
+        try {
+            mCameraSession?.setRepeatingRequest(mCameraBuilder.build(), null, mBackgroundHandler)
+        } catch (e: CameraAccessException) {
+            Log.e(TAG, "setRepeatingRequest failed, " + e.message)
+        }
+
+    }
+
     private fun zoom(zoomIn: Boolean) {
         if (zoomIn) {
-            lastZoom += 0.05f
+            lastScale += 0.05f
         } else {
-            if (lastZoom > 1) {
-                lastZoom -= 0.15f
+            if (lastScale > 1) {
+                lastScale -= 0.15f
             }
         }
-        zoom(lastZoom)
+        zoom(lastScale)
     }
 
     private fun zoom(zoom: Float) {
@@ -460,36 +480,27 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             val newRect = Rect(left, top, right, bottom)
             mCameraBuilder.set(CaptureRequest.SCALER_CROP_REGION, newRect)
             updatePreview()
-            lastZoom = z
+            lastScale = z
         }
     }
 
-    private val focusAni by lazy { initFocusViewAni() }
     private fun startFocusAni() {
-        if (focusAni.isRunning) {
-            focusAni.cancel()
-        }
-        focusAni.start()
-    }
+        AnimatorSet().apply {
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationStart(animation: Animator?) {
+                    super.onAnimationStart(animation)
+                    focusBtn.alpha = 1f
+                    focusBtn.visibility = View.VISIBLE
+                }
 
-
-    private fun initFocusViewAni() = AnimatorSet {
-        setListener(object : AnimatorListenerAdapter() {
-            override fun onAnimationStart(animation: Animator?) {
-                super.onAnimationStart(animation)
-                focusBtn.alpha = 1f
-                focusBtn.visibility = View.VISIBLE
-            }
-
-            override fun onAnimationEnd(animation: Animator?) {
-                super.onAnimationEnd(animation)
-                focusBtn.visibility = View.GONE
-            }
-        })
-        invoke {
+                override fun onAnimationEnd(animation: Animator?) {
+                    super.onAnimationEnd(animation)
+                    focusBtn.visibility = View.GONE
+                }
+            })
             play(ObjectAnimator.ofFloat(focusBtn, "scaleX", 1.5f, 1f).apply { duration = 500 })
                     .with(ObjectAnimator.ofFloat(focusBtn, "scaleY", 1.5f, 1f).apply { duration = 500 })
                     .before(ObjectAnimator.ofFloat(focusBtn, "alpha", 1f, 0f).apply { duration = 750 })
-        }
+        }.start()
     }
 }

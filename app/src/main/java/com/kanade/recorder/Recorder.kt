@@ -10,11 +10,13 @@ import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
+import android.view.Window
+import android.view.WindowManager
 import android.widget.Toast
 import com.kanade.recorder.camera1.Camera1Fragment
 import com.kanade.recorder.camera2.Camera2Fragment
 
-class RecorderActivity : AppCompatActivity() {
+class Recorder : AppCompatActivity() {
     private val permissions = arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
 
     companion object {
@@ -26,7 +28,7 @@ class RecorderActivity : AppCompatActivity() {
 
         @JvmStatic
         fun newInstance(context: Context, filepath: String): Intent {
-            val intent = Intent(context, RecorderActivity::class.java)
+            val intent = Intent(context, Recorder::class.java)
             intent.putExtra(ARG_FILEPATH, filepath)
             return intent
         }
@@ -38,9 +40,9 @@ class RecorderActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN)
         setContentView(R.layout.activity_recorder)
 
-        // 权限检查
         if (Build.VERSION.SDK_INT >= 23) {
             for (permission in permissions) {
                 if (ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
@@ -96,12 +98,11 @@ class RecorderActivity : AppCompatActivity() {
         if (fm.backStackEntryCount <= 0) {
             val transaction = fm.beginTransaction()
             if (isLollipop) {
-                transaction.replace(R.id.recorder_fl, Camera2Fragment.newInstance(filepath))
+                transaction.add(R.id.recorder_fl, Camera2Fragment.newInstance(filepath))
             } else {
-                transaction.replace(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
+                transaction.add(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
             }
-            transaction.addToBackStack(null)
-                    .commit()
+            transaction.commit()
         }
     }
 
