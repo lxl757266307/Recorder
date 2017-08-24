@@ -19,7 +19,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.HandlerThread
 import android.support.v4.app.Fragment
-import android.util.Log
+import android.util.DisplayMetrics
 import android.view.*
 import android.widget.ImageView
 import android.widget.Toast
@@ -62,7 +62,11 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     private lateinit var focusBtn: ImageView
     private lateinit var backBtn: ImageView
 
+    private val camera2PreviewMatrix by lazy { Matrix() }
+    private val preview2CameraMatrix by lazy { Matrix() }
+    private lateinit var viewSize: RecorderSize
     private lateinit var optimalSize: RecorderSize
+    private lateinit var characteristics: CameraCharacteristics
     private lateinit var mCameraDevice: CameraDevice
     private lateinit var mCameraBuilder: CaptureRequest.Builder
     private lateinit var mBackgroundThread: HandlerThread
@@ -94,9 +98,15 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         initView(view)
-
+        val dm = DisplayMetrics()
+        activity.windowManager.defaultDisplay.getMetrics(dm)
+        viewSize = RecorderSize(dm.heightPixels, dm.widthPixels)
         filepath = arguments.getString(Recorder.ARG_FILEPATH)
         recorderManager = MediaRecorderManager()
+
+        val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraId = manager.cameraIdList[0]
+        characteristics = manager.getCameraCharacteristics(cameraId) as CameraCharacteristics
     }
 
     override fun onResume() {
@@ -107,6 +117,8 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         } else {
             textureView.surfaceTextureListener = mSurfaceTextureListener
         }
+        focusBtn.visibility = View.GONE
+//        focusAni.start()
     }
 
     override fun onPause() {
@@ -209,7 +221,8 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
 
     private fun updatePreview() {
         try {
-            mCameraBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO)
+            mCameraBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_VIDEO)
+            mCameraBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON)
             mCameraRequest = mCameraBuilder.build()
             mCameraSession?.setRepeatingRequest(mCameraRequest, null, mBackgroundHandler)
         } catch (e: CameraAccessException) {
@@ -222,12 +235,18 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         mCameraSession = null
     }
 
+    override fun onTouched() {
+        recorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filepath)
+    }
+
     override fun onPressed() {
+        if (!recorderManager.isPrepare()) {
+            return
+        }
         closePreviewSession()
         try {
             val preBuilder = mCameraBuilder
             mCameraBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
-            recorderManager.prepareRecord(initProfile(optimalSize.width, optimalSize.height), filepath)
 
             val texture = textureView.surfaceTexture
             val previewSurface = Surface(texture)
@@ -252,7 +271,6 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
 
                     activity.runOnUiThread {
                         recorderManager.startRecord()
-                        isRecording = true
                     }
                     progressBtn.removeCallbacks(runnable)
                     progressBtn.post(runnable)
@@ -277,22 +295,20 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         recordComplete()
     }
 
-    private var isRecording = false
     private val runnable: Runnable by lazy { initRunnable() }
     private fun recordComplete() {
-        if (!isRecording) {
+        if (!recorderManager.isRecording()) {
             return
         }
 
         closePreviewSession()
         recorderManager.stopRecord()
-        isRecording = false
         val sec = duration / 10.0
         if (sec < 1) {
-            Toast.makeText(context, R.string.record_too_short, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.record_too_short, Toast.LENGTH_SHORT).show()
             startPreview()
         } else {
-            progressBtn.recordComplete()
+            progressBtn.revert()
             progressBtn.postDelayed({
                 previewVideo()
             }, 300)
@@ -309,7 +325,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     }
 
     private fun initRunnable() = Runnable {
-        if (!isRecording) {
+        if (!recorderManager.isRecording()) {
             return@Runnable
         }
         duration++
@@ -338,7 +354,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             val screenProp = height / width.toFloat()
             optimalSize = getBestSize(map, 1000, screenProp)
 
-            textureView.setAspectRatio(optimalSize.height, optimalSize.width)
+            textureView.setAspectRatio(optimalSize.width, optimalSize.height)
             configureTransform(optimalSize.width, optimalSize.height)
             manager.openCamera(cameraId, mStateCallback, null)
         } catch (e: CameraAccessException) {
@@ -393,7 +409,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             when(event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     lastTouchY = textureView.y
-                    progressBtn.startRecord()
+                    progressBtn.scale()
                 }
                 MotionEvent.ACTION_MOVE -> {
                     // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
@@ -403,7 +419,7 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
                     zoom(Math.abs(lastTouchY) <= Math.abs(event.y))
                     lastTouchY = event.y
                 }
-                MotionEvent.ACTION_UP -> progressBtn.recordComplete()
+                MotionEvent.ACTION_UP -> progressBtn.revert()
             }
             return true
         }
@@ -412,14 +428,14 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     private fun initScaleGestureListener() = ScaleGestureImpl(context, object : ScaleGestureImpl.GestureListener {
         override fun onSingleTap(event: MotionEvent) {
             // 录像按钮以下位置不允许对焦
-            if (event.y < progressBtn.y) {
-                val x = event.x
-                val y = event.y
-                focusBtn.x = x - focusBtn.width / 2
-                focusBtn.y = y - focusBtn.height / 2
-                focus(x, y)
-                startFocusAni()
-            }
+//            if (event.y < progressBtn.y) {
+//                val x = event.x
+//                val y = event.y
+//                focusBtn.x = x - focusBtn.width / 2
+//                focusBtn.y = y - focusBtn.height / 2
+//                focus(x, y)
+//                startFocusAni()
+//            }
         }
 
         override fun onScale(scaleFactor: Float, focusX: Float, focusY: Float) {
@@ -427,22 +443,135 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         }
     })
 
+    private fun cancelAutoFocus() {
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL)
+        mCameraRequest = mCameraBuilder.build()
+        mCameraSession?.capture(mCameraRequest, null, mBackgroundHandler)
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE)
+        mCameraSession?.setRepeatingRequest(mCameraRequest, null, mBackgroundHandler)
+    }
+
     private fun focus(x: Float, y: Float) {
-        val focusRect = calculateTapArea(x, y, optimalSize.width, optimalSize.height, 1f)
-        val meteringRect = calculateTapArea(x, y, optimalSize.width, optimalSize.height, 1.5f)
-
-        mCameraBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, arrayOf(MeteringRectangle(focusRect, 1000)))
-        mCameraBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, arrayOf(MeteringRectangle(meteringRect, 1000)))
-        mCameraBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_AUTO)
-        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START)
-        mCameraBuilder.set(CaptureRequest.CONTROL_AE_PRECAPTURE_TRIGGER, CameraMetadata.CONTROL_AE_PRECAPTURE_TRIGGER_START)
-
-        try {
-            mCameraSession?.setRepeatingRequest(mCameraBuilder.build(), null, mBackgroundHandler)
-        } catch (e: CameraAccessException) {
-            Log.e(TAG, "setRepeatingRequest failed, " + e.message)
+        cancelAutoFocus()
+        val coords = floatArrayOf(x, y)
+        calculateCameraToPreviewMatrix()
+        camera2PreviewMatrix.invert(preview2CameraMatrix)
+        preview2CameraMatrix.mapPoints(coords)
+        val focus_x = coords[0]
+        val focus_y = coords[1]
+        val focusSize = 50
+        val rect = Rect()
+        rect.left = focus_x.toInt() - focusSize
+        rect.right = focus_x.toInt() + focusSize
+        rect.top = focus_y.toInt() - focusSize
+        rect.bottom = focus_y.toInt() + focusSize
+        if (rect.left < -1000) {
+            rect.left = -1000
+            rect.right = rect.left + 2 * focusSize
+        } else if (rect.right > 1000) {
+            rect.right = 1000
+            rect.left = rect.right - 2 * focusSize
+        }
+        if (rect.top < -1000) {
+            rect.top = -1000
+            rect.bottom = rect.top + 2 * focusSize
+        } else if (rect.bottom > 1000) {
+            rect.bottom = 1000
+            rect.top = rect.bottom - 2 * focusSize
         }
 
+        val sensorRect = getViewableRect()
+        val focusRect = arrayOf(convertAreaToMeteringRectangle(sensorRect, rect))
+        if (characteristics.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AF) > 0) {
+            mCameraBuilder.set(CaptureRequest.CONTROL_AF_REGIONS, focusRect)
+        }
+
+        if (characteristics.get(CameraCharacteristics.CONTROL_MAX_REGIONS_AE) > 0) {
+            mCameraBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, focusRect)
+        }
+
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE)
+        mCameraRequest = mCameraBuilder.build()
+        try {
+            mCameraSession?.setRepeatingRequest(mCameraRequest, null, mBackgroundHandler)
+        } catch (e: CameraAccessException) {
+            e.printStackTrace()
+        }
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_START)
+        mCameraSession?.capture(mCameraRequest, mAfCaptureCallback, mBackgroundHandler)
+        mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_IDLE)
+    }
+
+    private fun calculateCameraToPreviewMatrix() {
+        camera2PreviewMatrix.reset()
+        camera2PreviewMatrix.setScale(1f, 1f)
+        val result = (characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) - 90 + 360) % 360
+        camera2PreviewMatrix.postRotate(result.toFloat())
+        // Camera driver coordinates range from (-1000, -1000) to (1000, 1000).
+        // UI coordinates range from (0, 0) to (width, height).
+        camera2PreviewMatrix.postScale(viewSize.width / 2000f, viewSize.height / 2000f)
+        camera2PreviewMatrix.postTranslate(viewSize.width / 2f, viewSize.height / 2f)
+    }
+
+    private val mAfCaptureCallback = object : CameraCaptureSession.CaptureCallback() {
+        private fun process(result: CaptureResult) = Unit
+        override fun onCaptureProgressed(session: CameraCaptureSession, request: CaptureRequest, partialResult: CaptureResult) = Unit
+        override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
+            val state = result.get(CaptureResult.CONTROL_AF_STATE)
+            if (state == null || state != CameraMetadata.CONTROL_AF_MODE_AUTO) {
+                mCameraBuilder.set(CaptureRequest.CONTROL_AF_TRIGGER, CameraMetadata.CONTROL_AF_TRIGGER_CANCEL)
+                try {
+                    mCameraBuilder.set(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_AUTO)
+                    mCameraBuilder.set(CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON)
+                    mCameraRequest = mCameraBuilder.build()
+                    mCameraSession?.setRepeatingRequest(mCameraRequest, null, mBackgroundHandler)
+                } catch (e: CameraAccessException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun getViewableRect(): Rect {
+        val cropRect = mCameraBuilder.get(CaptureRequest.SCALER_CROP_REGION)
+        if (cropRect != null) {
+            return cropRect
+        }
+
+        val sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
+        sensorRect.right -= sensorRect.left
+        sensorRect.left = 0
+        sensorRect.bottom -= sensorRect.top
+        sensorRect.top = 0
+        return sensorRect
+    }
+
+    private fun convertAreaToMeteringRectangle(sensorRect: Rect, rect: Rect): MeteringRectangle {
+        val camera2Rect = convertRectToCamera2(sensorRect, rect)
+        return MeteringRectangle(camera2Rect, 1000)
+    }
+
+    private fun convertRectToCamera2(cropRect: Rect, rect: Rect): Rect {
+        // for camera1 is always [-1000, -1000] to [1000, 1000] for the viewable region
+        // but for camera2, we must convert to be relative to the crop region
+        val left_f = (rect.left + 1000) / 2000.0
+        val top_f = (rect.top + 1000) / 2000.0
+        val right_f = (rect.right + 1000) / 2000.0
+        val bottom_f = (rect.bottom + 1000) / 2000.0
+        var left = (cropRect.left + left_f * (cropRect.width() - 1)).toInt()
+        var right = (cropRect.left + right_f * (cropRect.width() - 1)).toInt()
+        var top = (cropRect.top + top_f * (cropRect.height() - 1)).toInt()
+        var bottom = (cropRect.top + bottom_f * (cropRect.height() - 1)).toInt()
+        left = Math.max(left, cropRect.left)
+        right = Math.max(right, cropRect.left)
+        top = Math.max(top, cropRect.top)
+        bottom = Math.max(bottom, cropRect.top)
+        left = Math.min(left, cropRect.right)
+        right = Math.min(right, cropRect.right)
+        top = Math.min(top, cropRect.bottom)
+        bottom = Math.min(bottom, cropRect.bottom)
+
+        return Rect(left, top, right, bottom)
     }
 
     private fun zoom(zoomIn: Boolean) {
@@ -457,10 +586,6 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
     }
 
     private fun zoom(zoom: Float) {
-        val manager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        val cameraId = manager.cameraIdList[0]
-        val characteristics = manager.getCameraCharacteristics(cameraId)
-
         val maxZoom = characteristics.get(CameraCharacteristics.SCALER_AVAILABLE_MAX_DIGITAL_ZOOM).toInt()
         val z = Math.min(maxZoom.toFloat(), zoom)
         val sensorRect = characteristics.get(CameraCharacteristics.SENSOR_INFO_ACTIVE_ARRAY_SIZE)
@@ -469,8 +594,8 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             var right = left
             var top = rect.height() / 2
             var bottom = top
-            val hwidth = (rect.width() / (2.0 * zoom)).toInt()
-            val hheight = (rect.height() / (2.0 * zoom)).toInt()
+            val hwidth = (rect.width() / (2.0 * z)).toInt()
+            val hheight = (rect.height() / (2.0 * z)).toInt()
 
             left -= hwidth
             right += hwidth
@@ -484,8 +609,17 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
         }
     }
 
+    private val focusAni by lazy { initFocusViewAni() }
     private fun startFocusAni() {
-        AnimatorSet().apply {
+        if (focusAni.isRunning) {
+            focusAni.cancel()
+        }
+        focusAni.start()
+    }
+
+
+    private fun initFocusViewAni(): AnimatorSet {
+        return AnimatorSet().apply {
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationStart(animation: Animator?) {
                     super.onAnimationStart(animation)
@@ -501,6 +635,6 @@ class Camera2Fragment : Fragment(), VideoProgressBtn.Listener {
             play(ObjectAnimator.ofFloat(focusBtn, "scaleX", 1.5f, 1f).apply { duration = 500 })
                     .with(ObjectAnimator.ofFloat(focusBtn, "scaleY", 1.5f, 1f).apply { duration = 500 })
                     .before(ObjectAnimator.ofFloat(focusBtn, "alpha", 1f, 0f).apply { duration = 750 })
-        }.start()
+        }
     }
 }

@@ -21,6 +21,10 @@ class MediaRecorderManager {
 
     fun getRecorder(): MediaRecorder? = recorder
 
+    fun isPrepare() = isPrepare
+
+    fun isRecording() = isRecording
+
     fun startRecord() {
         if (isRecording) {
             stopRecord()
@@ -50,6 +54,9 @@ class MediaRecorderManager {
             } finally {
                 releaseMediaRecorder()
             }
+        } else if (isPrepare) {
+            isPrepare = false
+            releaseMediaRecorder()
         }
     }
 

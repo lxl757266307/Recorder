@@ -22,7 +22,7 @@ fun calculateTapArea(x: Float, y: Float, svWidth: Int, svHeight: Int, coefficien
     return Rect(left, top, right, bottom)
 }
 
-private fun clamp(x: Int, min: Int, max: Int): Int {
+fun clamp(x: Int, min: Int, max: Int): Int {
     if (x > max) {
         return max
     }

@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
-import android.view.Window
 import android.view.WindowManager
 import android.widget.Toast
 import com.kanade.recorder.camera1.Camera1Fragment
@@ -102,7 +101,7 @@ class Recorder : AppCompatActivity() {
             } else {
                 transaction.add(R.id.recorder_fl, Camera1Fragment.newInstance(filepath))
             }
-            transaction.commit()
+            transaction.commitAllowingStateLoss()
         }
     }
 

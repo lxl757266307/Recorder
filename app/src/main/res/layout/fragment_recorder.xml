@@ -19,7 +19,8 @@
         android:layout_marginTop="225dp"
         android:layout_marginLeft="162dp"
         app:layout_constraintLeft_toLeftOf="parent"
-        android:layout_marginStart="162dp" />
+        android:layout_marginStart="162dp"
+        android:visibility="gone"/>
 
     <ImageView
         android:id="@+id/recorder_back"

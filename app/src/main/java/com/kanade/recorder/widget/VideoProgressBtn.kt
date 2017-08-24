@@ -34,8 +34,11 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private var progressScale = 1f
     private var progress = 0
 
-    private var animationIsPlaying = false
+    private var drawProgress = false
     private var listener: Listener? = null
+
+    private var isCancel = false
+    private var playingAni: AnimatorSet? = null
 
     init {
         btnPaint.isAntiAlias = true
@@ -69,7 +72,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
 
         canvas.drawCircle(circleCenter, circleCenter, progressSize / 2 - 1f, bgPaint)
         canvas.drawCircle(circleCenter, circleCenter, btnSize / 3 - 1f, btnPaint)
-        if (!animationIsPlaying) {
+        if (drawProgress) {
             val p = progress.toFloat() / 100 * 360
             canvas.drawArc(rectF, -90f, p, false, paint)
         }
@@ -85,9 +88,9 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
         setMeasuredDimension(maxSize, maxSize)
     }
 
-    fun startRecord() {
-        animationIsPlaying = true
-        AnimatorSet().apply {
+    fun scale() {
+        stopPlayingAni()
+        playingAni =  AnimatorSet().apply {
             duration = ANI_DURATION
             playTogether(
                     ValueAnimator.ofFloat(progressScale, ZOOM_IN).apply {
@@ -97,12 +100,13 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
                         addUpdateListener(btnListener)
                     })
             addListener(pressedListener)
-        }.start()
+        }
+        playingAni?.start()
     }
 
-    fun recordComplete() {
-        animationIsPlaying = true
-        AnimatorSet().apply {
+    fun revert() {
+        stopPlayingAni()
+        playingAni = AnimatorSet().apply {
             duration = ANI_DURATION
             playTogether(
                     ValueAnimator.ofFloat(progressScale, 1f).apply {
@@ -112,22 +116,57 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
                         addUpdateListener(btnListener)
                     })
             addListener(releaseListener)
-        }.start()
+        }
+        playingAni?.start()
+    }
+
+    private fun stopPlayingAni() {
+        playingAni?.let { ani ->
+            if (ani.isRunning) {
+                ani.cancel()
+            }
+        }
+        playingAni = null
     }
 
     private val pressedListener = object : AnimatorListenerAdapter() {
+        override fun onAnimationStart(animation: Animator?) {
+            super.onAnimationStart(animation)
+            listener?.onTouched()
+            drawProgress = false
+            isCancel = false
+        }
+
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
-            animationIsPlaying = false
+            if (isCancel) {
+                return
+            }
+            drawProgress = true
             listener?.onPressed()
+        }
+
+        override fun onAnimationCancel(animation: Animator?) {
+            super.onAnimationCancel(animation)
+            isCancel = true
         }
     }
 
     private val releaseListener = object : AnimatorListenerAdapter() {
+        override fun onAnimationStart(animation: Animator?) {
+            super.onAnimationStart(animation)
+            drawProgress = false
+            isCancel = false
+        }
+
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
-            animationIsPlaying = false
             listener?.onRelease()
+        }
+
+        override fun onAnimationCancel(animation: Animator?) {
+            super.onAnimationCancel(animation)
+            isCancel = true
         }
     }
 
@@ -149,6 +188,8 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     }
 
     interface Listener {
+        fun onTouched()
+
         fun onPressed()
 
         fun onRelease()

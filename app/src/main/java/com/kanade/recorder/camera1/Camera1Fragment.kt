@@ -39,7 +39,6 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     private lateinit var focusBtn: ImageView
     private lateinit var backBtn: ImageView
 
-    private var isRecording = false
     // 录像时长(用于限制录像最大时长)
     private var duration: Int = 0
     // 录像文件保存地址
@@ -90,7 +89,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         cameraManager.startPreview()
-        focusAni.start()
+        startFocusAni()
     }
 
     override fun onDestroyView() {
@@ -111,14 +110,17 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         initProfile(size.first, size.second)
     }
 
+    override fun onTouched() {
+        recorderManager.prepareRecord(profile, filepath)
+    }
+
     override fun onPressed() {
         duration = 0
-        if (recorderManager.prepareRecord(profile, filepath)) {
-            recorderManager.startRecord()
-            isRecording = true
-        }
         progressBtn.removeCallbacks(runnable)
-        progressBtn.post(runnable)
+        if (recorderManager.isPrepare()) {
+            recorderManager.startRecord()
+            progressBtn.post(runnable)
+        }
     }
 
     override fun onRelease() {
@@ -129,16 +131,15 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     }
 
     private fun recordComplete() {
-        if (!isRecording) {
+        if (!recorderManager.isRecording()) {
             return
         }
 
         recorderManager.stopRecord()
-        isRecording = false
         val sec = duration / 10.0
         // 录制时间过短时，不需要释放camera(因为还需要继续录制)
         if (sec < 1) {
-            Toast.makeText(context, R.string.record_too_short, Toast.LENGTH_LONG).show()
+            Toast.makeText(context, R.string.record_too_short, Toast.LENGTH_SHORT).show()
         } else {
             cameraManager.releaseCamera()
             previewVideo()
@@ -174,7 +175,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
      * 当录制时间超过最大时长时，强制停止
      */
     private fun initRunnable() = Runnable {
-        if (!isRecording) {
+        if (!recorderManager.isRecording()) {
             return@Runnable
         }
         duration++
@@ -211,7 +212,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
             when(event.action) {
                 MotionEvent.ACTION_DOWN -> {
                     lastTouchY = surfaceview.y
-                    progressBtn.startRecord()
+                    progressBtn.scale()
                 }
                 MotionEvent.ACTION_MOVE -> {
                     // 向下手势滑动，和向上手势滑动距离过短也不触发缩放事件
@@ -222,7 +223,7 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
                     cameraManager.zoom(isZoom)
                     lastTouchY = event.y
                 }
-                MotionEvent.ACTION_UP -> progressBtn.recordComplete()
+                MotionEvent.ACTION_UP -> progressBtn.revert()
             }
             return true
         }
@@ -247,17 +248,10 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
         }
     })
 
-    private val focusAni by lazy { initFocusViewAni() }
+    private var focusAni: AnimatorSet? = null
     private fun startFocusAni() {
-        if (focusAni.isRunning) {
-            focusAni.cancel()
-        }
-        focusAni.start()
-    }
-
-
-    private fun initFocusViewAni(): AnimatorSet {
-        return AnimatorSet().apply {
+        focusAni?.cancel()
+        focusAni =  AnimatorSet().apply {
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationStart(animation: Animator?) {
                     super.onAnimationStart(animation)
@@ -268,12 +262,19 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
                 override fun onAnimationEnd(animation: Animator?) {
                     super.onAnimationEnd(animation)
                     focusBtn.visibility = View.GONE
+                    focusAni = null
+                }
+
+                override fun onAnimationCancel(animation: Animator?) {
+                    super.onAnimationCancel(animation)
+                    focusBtn.visibility = View.GONE
+                    focusAni = null
                 }
             })
             play(ObjectAnimator.ofFloat(focusBtn, "scaleX", 1.5f, 1f).apply { duration = 500 })
                     .with(ObjectAnimator.ofFloat(focusBtn, "scaleY", 1.5f, 1f).apply { duration = 500 })
                     .before(ObjectAnimator.ofFloat(focusBtn, "alpha", 1f, 0f).apply { duration = 750 })
         }
+        focusAni?.start()
     }
-
 }
