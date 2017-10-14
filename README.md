@@ -13,7 +13,7 @@ allprojects {
 }
 
 dependencies {
-	compile 'com.github.pye52:Recorder:1.1.0'
+	compile 'com.github.pye52:Recorder:2.0.1'
 }
 ```
 
@@ -25,10 +25,8 @@ dependencies {
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 <uses-permission android:name="android.permission.CAMERA"/>
-<uses-feature android:name="android.hardware.camera"/>
-<uses-feature android:name="android.hardware.camera.autofocus"/>
 
-<activity android:name="com.kanade.recorder.Recorder1"
+<activity android:name="com.kanade.recorder.Recorder"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"/>
 ```
