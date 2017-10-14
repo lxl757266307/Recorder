@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <merge xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
-    <com.kanade.recorder.widget.VideoProgressBtn
+    <com.kanade.recorder.widget.RecorderButton
         android:id="@+id/recorder_progress"
         android:layout_width="70dp"
         android:layout_height="70dp"
@@ -10,17 +10,27 @@
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent" />
 
-    <ImageView
-        android:id="@+id/recorder_focus"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:src="@drawable/recorder_focus_btn"
+    <TextView
+        android:id="@+id/recorder_scale"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:textColor="@android:color/white"
+        android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"
-        android:layout_marginTop="225dp"
-        android:layout_marginLeft="162dp"
+        android:layout_marginTop="20dp"
         app:layout_constraintLeft_toLeftOf="parent"
-        android:layout_marginStart="162dp"
-        android:visibility="gone"/>
+        app:layout_constraintRight_toRightOf="parent"/>
+
+    <ImageView
+        android:id="@+id/recorder_flash"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/flash_off"
+        android:layout_marginRight="8dp"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginTop="8dp" />
 
     <ImageView
         android:id="@+id/recorder_back"

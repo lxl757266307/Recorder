@@ -11,7 +11,7 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 
-class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
+class RecorderButton(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private val TAG = "VideoProgressBar"
     private val CIRCLE_LINE_WIDTH = 10
     // 动画持续时间
@@ -132,7 +132,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     private val pressedListener = object : AnimatorListenerAdapter() {
         override fun onAnimationStart(animation: Animator?) {
             super.onAnimationStart(animation)
-            listener?.onTouched()
+            listener?.onRecorderBtnTouched()
             drawProgress = false
             isCancel = false
         }
@@ -143,7 +143,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
                 return
             }
             drawProgress = true
-            listener?.onPressed()
+            listener?.onRecorderBtnPressed()
         }
 
         override fun onAnimationCancel(animation: Animator?) {
@@ -161,7 +161,7 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
 
         override fun onAnimationEnd(animation: Animator) {
             super.onAnimationEnd(animation)
-            listener?.onRelease()
+            listener?.onRecorderBtnUp()
         }
 
         override fun onAnimationCancel(animation: Animator?) {
@@ -188,10 +188,10 @@ class VideoProgressBtn(ctx: Context, attrs: AttributeSet) : View(ctx, attrs) {
     }
 
     interface Listener {
-        fun onTouched()
+        fun onRecorderBtnTouched()
 
-        fun onPressed()
+        fun onRecorderBtnPressed()
 
-        fun onRelease()
+        fun onRecorderBtnUp()
     }
 }

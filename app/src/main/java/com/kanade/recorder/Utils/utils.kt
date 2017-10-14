@@ -1,40 +1,13 @@
 package com.kanade.recorder.Utils
 
 import android.content.ContentValues.TAG
-import android.graphics.Rect
-import android.hardware.Camera
 import android.media.CamcorderProfile
 import android.util.Log
 import java.util.*
 
-/**
- * Convert touch position x:y to [Camera.Area] position -1000:-1000 to 1000:1000.
- */
-fun calculateTapArea(x: Float, y: Float, svWidth: Int, svHeight: Int, coefficient: Float): Rect {
-    val focusAreaSize = 300f
-    val areaSize = java.lang.Float.valueOf(focusAreaSize * coefficient).toInt()
-
-    val left = clamp((x / svWidth * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
-    val right = clamp(left + areaSize, -1000, 1000)
-    val top = clamp((y / svHeight * 2000 - 1000 - areaSize / 2).toInt(), -1000, 1000)
-    val bottom = clamp(top + areaSize, -1000, 1000)
-
-    return Rect(left, top, right, bottom)
-}
-
-fun clamp(x: Int, min: Int, max: Int): Int {
-    if (x > max) {
-        return max
-    }
-    if (x < min) {
-        return min
-    }
-    return x
-}
-
-// 获取最优录像尺寸
 data class RecorderSize(var height: Int, var width: Int)
 
+// 获取最优尺寸
 fun getBestSize(list: List<RecorderSize>, th: Int, rate: Float): RecorderSize {
     Collections.sort(list, CameraSizeComparator())
     var i = 0
@@ -54,13 +27,10 @@ fun getBestSize(list: List<RecorderSize>, th: Int, rate: Float): RecorderSize {
 
 fun initProfile(width: Int, height: Int): CamcorderProfile {
     val profile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH)
-    // 这里是重点，分辨率和比特率
-    // 分辨率越大视频大小越大，比特率越大视频越清晰
-    // 清晰度由比特率决定，视频尺寸和像素量由分辨率决定
     // 比特率越高越清晰（前提是分辨率保持不变），分辨率越大视频尺寸越大。
     profile.videoFrameWidth = width
     profile.videoFrameHeight = height
-    profile.videoBitRate = width * height
+    profile.videoBitRate = width * height * 2
     profile.audioBitRate = 96000
     return profile
 }

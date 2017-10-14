@@ -1,13 +1,11 @@
 package com.kanade.recorder.Utils
 
-import android.annotation.TargetApi
+import android.annotation.SuppressLint
 import android.media.CamcorderProfile
 import android.media.MediaRecorder
-import android.os.Build
 import android.util.Log
-import android.view.Surface
 
-class MediaRecorderManager {
+class MediaRecorderManager(private var camera2: Boolean = false) {
     private val TAG = "MediaRecorderManager"
     private var isPrepare = false
     private var isRecording = false
@@ -69,17 +67,15 @@ class MediaRecorderManager {
         recorder = null
     }
 
+    @SuppressLint("InlinedApi")
     fun prepareRecord(profile: CamcorderProfile, filePath: String): Boolean {
         try {
             recorder = MediaRecorder()
             recorder?.let { recorder ->
                 listener?.prepare(recorder)
                 recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                if (camera2) {
                     recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-//                    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-//                    recorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264)
-//                    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
                 } else {
                     recorder.setVideoSource(MediaRecorder.VideoSource.CAMERA)
                 }

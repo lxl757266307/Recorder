@@ -4,40 +4,34 @@ import android.hardware.Camera
 import android.util.Log
 import android.view.SurfaceHolder
 import com.kanade.recorder.Utils.RecorderSize
-import com.kanade.recorder.Utils.calculateTapArea
 import com.kanade.recorder.Utils.getBestSize
-import java.util.ArrayList
 
 @Suppress("DEPRECATION")
-class CameraManager : Camera.AutoFocusCallback {
+class CameraManager(private var holder: SurfaceHolder,
+                    private var initWidth: Int,
+                    private var initHeight: Int) : Camera.AutoFocusCallback {
     private val TAG = "CameraManager"
 
-    private lateinit var holder: SurfaceHolder
     private lateinit var params: Camera.Parameters
     private lateinit var camera: Camera
 
+    private var lastPosi = 0
     private var isRelease = true
     private var isPreview = false
     private var svWidth: Int = 0
     private var svHeight: Int = 0
-    private var initWidth: Int = 0
-    private var initHeight: Int = 0
 
-    fun init(holder: SurfaceHolder) {
+    fun updateHolder(holder: SurfaceHolder) {
         this.holder = holder
         if (isPreview) {
             camera.setPreviewDisplay(holder)
         }
     }
 
-    fun init(holder: SurfaceHolder, width: Int, height: Int) {
-        this.initWidth = width
-        this.initHeight = height
-        init(holder)
-    }
-
     fun startPreview() {
-        if (isPreview) return
+        if (isPreview) {
+            return
+        }
         try {
             isRelease = false
             isPreview = true
@@ -54,8 +48,29 @@ class CameraManager : Camera.AutoFocusCallback {
 
     fun getCamera(): Camera = camera
 
+    fun openFlash() {
+        params.flashMode = Camera.Parameters.FLASH_MODE_TORCH
+        try {
+            camera.parameters = params
+        } catch (e: Exception) {
+            Log.d(TAG, "open flash error")
+            e.printStackTrace()
+        }
+    }
+
+    fun closeFlash() {
+        params.flashMode = Camera.Parameters.FLASH_MODE_OFF
+        try {
+            camera.parameters = params
+        } catch (e: Exception) {
+            Log.d(TAG, "open flash error")
+            e.printStackTrace()
+        }
+    }
+
     fun releaseCamera() {
         if (!isRelease) {
+            camera.unlock()
             camera.stopPreview()
             camera.release()
             isRelease = true
@@ -64,7 +79,9 @@ class CameraManager : Camera.AutoFocusCallback {
     }
 
     override fun onAutoFocus(success: Boolean, camera: Camera) {
-        if (success) camera.cancelAutoFocus()
+        if (success) {
+            camera.cancelAutoFocus()
+        }
     }
 
     /**
@@ -73,53 +90,28 @@ class CameraManager : Camera.AutoFocusCallback {
     fun getVideoSize(): Pair<Int, Int> = Pair(svWidth, svHeight)
 
     /**
-     * 对焦
-     */
-    @Synchronized fun FocusMetering(x: Float, y: Float) {
-        if (!isPreview || isRelease) return
-        val focusRect = calculateTapArea(x, y, initWidth, initHeight, 1f)
-        val meteringRect = calculateTapArea(x, y, initWidth, initHeight, 1.5f)
-
-        params.focusMode = Camera.Parameters.FOCUS_MODE_AUTO
-
-        if (params.maxNumFocusAreas > 0) {
-            val focusAreas = ArrayList<Camera.Area>()
-            focusAreas.add(Camera.Area(focusRect, 1000))
-
-            params.focusAreas = focusAreas
-        }
-
-        if (params.maxNumMeteringAreas > 0) {
-            val meteringAreas = ArrayList<Camera.Area>()
-            meteringAreas.add(Camera.Area(meteringRect, 1000))
-
-            params.meteringAreas = meteringAreas
-        }
-
-        try {
-            camera.parameters = params
-            camera.autoFocus(this)
-        } catch (e: Exception) {
-            Log.d(TAG, "focus error")
-            e.printStackTrace()
-        }
-    }
-
-    /**
      * 缩放
-     * @param isZoomIn
+     * @param zoomIn
      */
-    @Synchronized fun zoom(isZoomIn: Boolean) {
-        if (!isPreview || isRelease || !params.isZoomSupported) return
+    @Synchronized
+    fun zoom(zoomIn: Boolean): Int {
+        if (!isPreview || isRelease || !params.isZoomSupported) {
+            return -1
+        }
         val maxZoom = params.maxZoom
-        var zoom = params.zoom
-        if (isZoomIn && zoom < maxZoom) {
-            zoom++
-        } else if (zoom > 0) {
-            zoom -= 2
+        val ratios = params.zoomRatios
+        if (zoomIn) {
+            lastPosi++
+        } else {
+            lastPosi -= 2
+        }
+        if (lastPosi > maxZoom) {
+            lastPosi = maxZoom
+        } else if (lastPosi < 0) {
+            lastPosi = 0
         }
 
-        params.zoom = zoom
+        params.zoom = lastPosi
 
         try {
             camera.parameters = params
@@ -127,17 +119,7 @@ class CameraManager : Camera.AutoFocusCallback {
             Log.d(TAG, "zoom error")
             e.printStackTrace()
         }
-    }
-
-    @Synchronized fun zoom(zoom: Int) {
-        if (!isPreview || isRelease || !params.isZoomSupported) return
-        val maxZoom = params.maxZoom
-        params.zoom = Math.min(zoom, maxZoom)
-        try {
-            camera.parameters = params
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        return ratios[lastPosi]
     }
 
     private fun setParams(holder: SurfaceHolder, params: Camera.Parameters, width: Int, height: Int) {
@@ -151,7 +133,7 @@ class CameraManager : Camera.AutoFocusCallback {
         holder.setFixedSize(svWidth, svHeight)
         holder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS)
 
-        params.zoom = 1
+        params.zoom = 0
         params.setPreviewSize(svWidth, svHeight)
         params.setPictureSize(svWidth, svHeight)
         val supportFocusModes = params.supportedFocusModes

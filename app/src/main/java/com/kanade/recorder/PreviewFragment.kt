@@ -1,10 +1,7 @@
 package com.kanade.recorder
 
-import android.animation.Animator
-import android.animation.AnimatorListenerAdapter
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
-import android.annotation.TargetApi
 import android.content.Intent
 import android.graphics.Color
 import android.media.MediaPlayer
@@ -12,9 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.support.v4.app.Fragment
 import android.support.v7.app.AppCompatActivity
-import android.util.DisplayMetrics
 import android.view.*
-import android.view.animation.DecelerateInterpolator
 import android.widget.ImageView
 import android.widget.VideoView
 
@@ -50,9 +45,9 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
     }
 
     private fun initView(view: View) {
-        videoview = view.findViewById(R.id.fg_pv_vv) as VideoView
-        cancelBtn = view.findViewById(R.id.fg_pv_cancel) as ImageView
-        positiveBtn = view.findViewById(R.id.fg_pv_positive) as ImageView
+        videoview = view.findViewById(R.id.fg_pv_vv)
+        cancelBtn = view.findViewById(R.id.fg_pv_cancel)
+        positiveBtn = view.findViewById(R.id.fg_pv_positive)
 
 
         showOrHideBtnAni(0f, 1f)
@@ -67,19 +62,19 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
         startVideo(filepath)
     }
 
-    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-    private fun showVideoviewWithAni() {
-        // 求出屏幕的对角线长度
-        val dm = DisplayMetrics()
-        activity.windowManager.defaultDisplay.getMetrics(dm)
-        val maxRadius = Math.sqrt((dm.widthPixels * dm.widthPixels + dm.heightPixels * dm.heightPixels).toDouble()).toFloat()
-        val pX = dm.widthPixels / 2
-        val pY = (dm.heightPixels * 0.8).toInt()
-        ViewAnimationUtils.createCircularReveal(videoview, pX, pY, 0f, maxRadius).apply {
-            duration = 1000
-            interpolator = DecelerateInterpolator()
-        }.start()
-    }
+//    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+//    private fun showVideoviewWithAni() {
+//        // 求出屏幕的对角线长度
+//        val dm = DisplayMetrics()
+//        activity.windowManager.defaultDisplay.getMetrics(dm)
+//        val maxRadius = Math.sqrt((dm.widthPixels * dm.widthPixels + dm.heightPixels * dm.heightPixels).toDouble()).toFloat()
+//        val pX = dm.widthPixels / 2
+//        val pY = (dm.heightPixels * 0.8).toInt()
+//        ViewAnimationUtils.createCircularReveal(videoview, pX, pY, 0f, maxRadius).apply {
+//            duration = 1000
+//            interpolator = DecelerateInterpolator()
+//        }.start()
+//    }
 
     private fun startVideo(filepath: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
@@ -100,9 +95,9 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
     }
 
     override fun onPrepared(mp: MediaPlayer) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            showVideoviewWithAni()
-        }
+//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+//            showVideoviewWithAni()
+//        }
         mp.isLooping = true
         mp.start()
     }
@@ -115,34 +110,13 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
     }
 
     override fun onClick(v: View) {
-        if (v.id == R.id.fg_pv_cancel) {
-            showOrHideBtnAni(1f, 0f)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val dm = DisplayMetrics()
-                activity.windowManager.defaultDisplay.getMetrics(dm)
-                val startRadius = Math.sqrt((dm.widthPixels * dm.widthPixels + dm.heightPixels * dm.heightPixels).toDouble()).toFloat()
-                val pX = dm.widthPixels / 2
-                val pY = (dm.heightPixels * 0.8).toInt()
-                ViewAnimationUtils.createCircularReveal(videoview, pX, pY, startRadius, 0f).apply {
-                    duration = 1000
-                    interpolator = DecelerateInterpolator()
-                    addListener(object : AnimatorListenerAdapter() {
-                        override fun onAnimationEnd(animation: Animator?) {
-                            videoview.visibility = View.GONE
-                            activity.supportFragmentManager.popBackStack()
-                        }
-                    })
-                }.start()
-            } else {
-                activity.supportFragmentManager.popBackStack()
-            }
-        } else if (v.id == R.id.fg_pv_positive) {
+        if (v.id == R.id.fg_pv_positive) {
             val result = RecorderResult(filepath, (duration / 10.0).toInt())
             val data = Intent()
             data.putExtra(Recorder.RESULT_FILEPATH, result)
             activity.setResult(AppCompatActivity.RESULT_OK, data)
-            activity.finish()
         }
+        activity.finish()
     }
 
     private fun showOrHideBtnAni(from: Float, to: Float) {
