@@ -15,7 +15,6 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.support.v4.app.Fragment
 import android.util.DisplayMetrics
-import android.util.Log
 import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
@@ -262,6 +261,8 @@ class Camera2Fragment : Fragment(), RecorderButton.Listener, View.OnClickListene
         try {
             val preBuilder = mCameraBuilder
             mCameraBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD)
+            // 保持闪光灯的状态
+            mCameraBuilder.set(CaptureRequest.FLASH_MODE, preBuilder.get(CaptureRequest.FLASH_MODE))
 
             val texture = textureView.surfaceTexture
             val previewSurface = Surface(texture)

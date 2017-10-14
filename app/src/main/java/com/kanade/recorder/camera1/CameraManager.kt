@@ -70,6 +70,7 @@ class CameraManager(private var holder: SurfaceHolder,
 
     fun releaseCamera() {
         if (!isRelease) {
+            closeFlash()
             camera.unlock()
             camera.stopPreview()
             camera.release()

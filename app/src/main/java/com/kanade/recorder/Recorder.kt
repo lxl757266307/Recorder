@@ -12,7 +12,6 @@ import android.os.Bundle
 import android.support.v4.content.ContextCompat
 import android.support.v7.app.AlertDialog
 import android.support.v7.app.AppCompatActivity
-import android.util.Log
 import android.view.WindowManager
 import android.widget.Toast
 import com.kanade.recorder.camera1.Camera1Fragment
@@ -102,7 +101,6 @@ class Recorder : AppCompatActivity() {
     }
 
     private fun init() {
-        Log.d("Recorder", "init")
         val filepath = intent.getStringExtra(ARG_FILEPATH)
         val fm = supportFragmentManager
         // 默认启动录像fragment
