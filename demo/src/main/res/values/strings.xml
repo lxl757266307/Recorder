@@ -1,10 +1,6 @@
 <resources>
     <string name="app_name">Demo</string>
     <string name="btn_text">录像</string>
-    <string name="button_allow">确定</string>
-    <string name="button_deny">拒绝</string>
-    <string name="permission_request">请允许</string>
-    <string name="permission_denied">请允许</string>
     <string name="no_record">没有录像成功</string>
     <string name="success" formatted="false">录像文件位置: %s, 体积: %d, 时长: %d</string>
 </resources>
