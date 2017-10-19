@@ -16,6 +16,9 @@ import android.view.WindowManager
 import android.widget.Toast
 import com.kanade.recorder.camera1.Camera1Fragment
 import com.kanade.recorder.camera2.Camera2Fragment
+import android.content.ContextWrapper
+
+
 
 class Recorder : AppCompatActivity() {
     private val permissions = arrayOf(Manifest.permission.RECORD_AUDIO, Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA)
@@ -28,7 +31,7 @@ class Recorder : AppCompatActivity() {
         const val DURATION_LIMIT = 10
 
         @JvmStatic
-        fun newInstance(context: Context, filepath: String): Intent {
+        fun newIntent(context: Context, filepath: String): Intent {
             val intent = Intent(context, Recorder::class.java)
             intent.putExtra(ARG_FILEPATH, filepath)
             return intent
@@ -37,6 +40,17 @@ class Recorder : AppCompatActivity() {
         @JvmStatic
         fun getResult(intent: Intent): RecorderResult =
                 intent.getParcelableExtra(RESULT_FILEPATH)
+    }
+
+    override fun attachBaseContext(newBase: Context?) {
+        super.attachBaseContext(object : ContextWrapper(newBase) {
+            override fun getSystemService(name: String) =
+                    if (Context.AUDIO_SERVICE == name) {
+                        applicationContext.getSystemService(name)
+                    } else {
+                        super.getSystemService(name)
+                    }
+        })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

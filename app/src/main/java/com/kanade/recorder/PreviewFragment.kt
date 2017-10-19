@@ -90,8 +90,8 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
     }
 
     override fun onDestroyView() {
-        super.onDestroyView()
         videoview.stopPlayback()
+        super.onDestroyView()
     }
 
     override fun onPrepared(mp: MediaPlayer) {
