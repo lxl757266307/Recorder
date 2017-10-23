@@ -12,6 +12,7 @@ import android.support.v7.app.AppCompatActivity
 import android.view.*
 import android.widget.ImageView
 import android.widget.VideoView
+import java.io.File
 
 /**
  * preview the recorded video
@@ -62,20 +63,6 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
         startVideo(filepath)
     }
 
-//    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
-//    private fun showVideoviewWithAni() {
-//        // 求出屏幕的对角线长度
-//        val dm = DisplayMetrics()
-//        activity.windowManager.defaultDisplay.getMetrics(dm)
-//        val maxRadius = Math.sqrt((dm.widthPixels * dm.widthPixels + dm.heightPixels * dm.heightPixels).toDouble()).toFloat()
-//        val pX = dm.widthPixels / 2
-//        val pY = (dm.heightPixels * 0.8).toInt()
-//        ViewAnimationUtils.createCircularReveal(videoview, pX, pY, 0f, maxRadius).apply {
-//            duration = 1000
-//            interpolator = DecelerateInterpolator()
-//        }.start()
-//    }
-
     private fun startVideo(filepath: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             // 避免播放前的短暂黑屏
@@ -95,9 +82,6 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
     }
 
     override fun onPrepared(mp: MediaPlayer) {
-//        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-//            showVideoviewWithAni()
-//        }
         mp.isLooping = true
         mp.start()
     }
@@ -115,6 +99,9 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
             val data = Intent()
             data.putExtra(Recorder.RESULT_FILEPATH, result)
             activity.setResult(AppCompatActivity.RESULT_OK, data)
+        } else {
+            val file = File(filepath)
+            file.delete()
         }
         activity.finish()
     }
