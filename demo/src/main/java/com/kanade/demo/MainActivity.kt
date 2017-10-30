@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
             if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
                 if (!shouldShowRequestPermissionRationale(permission)) {
                     AlertDialog.Builder(this)
-                            .setMessage("请给与应用存储写入权限")
+                            .setMessage("请给予应用存储写入权限")
                             .setPositiveButton(R.string.button_allow, { _, _ -> requestPermissions(arrayOf(permission), 1) })
                             .setNegativeButton(com.kanade.recorder.R.string.button_deny, { _, _ -> finish() })
                             .show()
@@ -48,7 +48,7 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         }
 
         val file = "video_" + System.currentTimeMillis() + ".mp4"
-        val intent = Recorder.newInstance(this, dir + File.separator + file)
+        val intent = Recorder.newIntent(this, dir + File.separator + file)
         startActivityForResult(intent, RESULT)
     }
 
