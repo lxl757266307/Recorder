@@ -25,9 +25,8 @@ class Recorder : AppCompatActivity() {
 
     companion object {
         private const val PERMISSION_CODE = 101
-        const val RESULT_FILEPATH = "result_filepath"
+        const val ARG_RESULT = "arg_result"
         const val ARG_FILEPATH = "arg_filepath"
-        const val ARG_DURATION = "arg_duration"
         const val DURATION_LIMIT = 10
 
         @JvmStatic
@@ -39,7 +38,7 @@ class Recorder : AppCompatActivity() {
 
         @JvmStatic
         fun getResult(intent: Intent): RecorderResult =
-                intent.getParcelableExtra(RESULT_FILEPATH)
+                intent.getParcelableExtra(ARG_RESULT)
     }
 
     override fun attachBaseContext(newBase: Context?) {

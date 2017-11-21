@@ -13,6 +13,7 @@ import android.widget.Toast
 import com.kanade.recorder.PreviewFragment
 import com.kanade.recorder.R
 import com.kanade.recorder.Recorder
+import com.kanade.recorder.RecorderResult
 import com.kanade.recorder.Utils.MediaRecorderManager
 import com.kanade.recorder.Utils.initProfile
 import com.kanade.recorder.widget.RecorderButton
@@ -152,9 +153,11 @@ class Camera1Fragment : Fragment(), View.OnClickListener, MediaRecorderManager.M
     }
 
     private fun previewVideo() {
+        val size = cameraManager.getVideoSize()
+        val result = RecorderResult(filepath, (duration / 10.0).toInt(), size.first, size.second)
         activity.supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.recorder_fl, PreviewFragment.newInstance(filepath, duration))
+                .replace(R.id.recorder_fl, PreviewFragment.newInstance(result))
                 .commit()
     }
 

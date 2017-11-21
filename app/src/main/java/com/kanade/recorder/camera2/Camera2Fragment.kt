@@ -22,6 +22,7 @@ import android.widget.Toast
 import com.kanade.recorder.PreviewFragment
 import com.kanade.recorder.R
 import com.kanade.recorder.Recorder
+import com.kanade.recorder.RecorderResult
 import com.kanade.recorder.Utils.*
 import com.kanade.recorder.camera1.Camera1Fragment
 import com.kanade.recorder.widget.AutoFitTextureView
@@ -332,9 +333,10 @@ class Camera2Fragment : Fragment(), RecorderButton.Listener, View.OnClickListene
     }
 
     private fun previewVideo() {
+        val result = RecorderResult(filepath, (duration / 10.0).toInt(), optimalSize.width, optimalSize.height)
         activity.supportFragmentManager
                 .beginTransaction()
-                .replace(R.id.recorder_fl, PreviewFragment.newInstance(filepath, duration))
+                .replace(R.id.recorder_fl, PreviewFragment.newInstance(result))
                 .commit()
     }
 

@@ -21,10 +21,9 @@ import java.io.File
  */
 class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnInfoListener {
     companion object {
-        fun newInstance(filepath: String, duration: Int): PreviewFragment {
+        fun newInstance(result: RecorderResult): PreviewFragment {
             val args = Bundle()
-            args.putString(Recorder.ARG_FILEPATH, filepath)
-            args.putInt(Recorder.ARG_DURATION, duration)
+            args.putParcelable(Recorder.ARG_RESULT, result)
 
             val fragment = PreviewFragment()
             fragment.arguments = args
@@ -34,10 +33,9 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
 
     private lateinit var cancelBtn: ImageView
     private lateinit var positiveBtn: ImageView
-    private lateinit var videoview: VideoView
+    private lateinit var videoView: VideoView
 
-    private var duration = 0
-    private lateinit var filepath: String
+    private lateinit var result: RecorderResult
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         val view = inflater.inflate(R.layout.fragment_preview, container, false)
@@ -46,10 +44,9 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
     }
 
     private fun initView(view: View) {
-        videoview = view.findViewById(R.id.fg_pv_vv)
+        videoView = view.findViewById(R.id.fg_pv_vv)
         cancelBtn = view.findViewById(R.id.fg_pv_cancel)
         positiveBtn = view.findViewById(R.id.fg_pv_positive)
-
 
         showOrHideBtnAni(0f, 1f)
         cancelBtn.setOnClickListener(this)
@@ -58,26 +55,24 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
 
     override fun onViewCreated(view: View?, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        duration = arguments.getInt(Recorder.ARG_DURATION)
-        filepath = arguments.getString(Recorder.ARG_FILEPATH)
-        startVideo(filepath)
+        result = arguments.getParcelable(Recorder.ARG_RESULT)
+        startVideo(result.filepath)
     }
 
     private fun startVideo(filepath: String) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             // 避免播放前的短暂黑屏
-            videoview.setOnInfoListener(this)
+            videoView.setOnInfoListener(this)
         } else {
-            videoview.setBackgroundColor(Color.TRANSPARENT)
+            videoView.setBackgroundColor(Color.TRANSPARENT)
         }
-
-        videoview.setOnPreparedListener(this)
-        videoview.setVideoPath(filepath)
-        videoview.start()
+        videoView.setOnPreparedListener(this)
+        videoView.setVideoPath(filepath)
+        videoView.start()
     }
 
     override fun onDestroyView() {
-        videoview.stopPlayback()
+        videoView.stopPlayback()
         super.onDestroyView()
     }
 
@@ -88,19 +83,18 @@ class PreviewFragment : Fragment(), View.OnClickListener, MediaPlayer.OnPrepared
 
     override fun onInfo(mp: MediaPlayer?, what: Int, extra: Int): Boolean {
         if (what == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-            videoview.setBackgroundColor(Color.TRANSPARENT)
+            videoView.setBackgroundColor(Color.TRANSPARENT)
         }
         return true
     }
 
     override fun onClick(v: View) {
         if (v.id == R.id.fg_pv_positive) {
-            val result = RecorderResult(filepath, (duration / 10.0).toInt())
             val data = Intent()
-            data.putExtra(Recorder.RESULT_FILEPATH, result)
+            data.putExtra(Recorder.ARG_RESULT, result)
             activity.setResult(AppCompatActivity.RESULT_OK, data)
         } else {
-            val file = File(filepath)
+            val file = File(result.filepath)
             file.delete()
         }
         activity.finish()
